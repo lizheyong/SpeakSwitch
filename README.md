@@ -87,9 +87,9 @@ Typeless 和 Chatterfly 提供「准备导入」按钮：Voice Switch 生成兼�
 
 ## 当前验证范围
 
-2026-10-15 在 Apple Silicon Mac 上完成 Chatterfly 1.0.7.13415 的真实键盘验收：用户确认点按 Fn 开始录音，再按 Fn 结束并成功输入文字，调用目标为 Chatterfly。该验收来自时序调整前的构建，当前构建的 Chatterfly 回归仍待确认。辅助功能与输入监控均已生效，语音输入快捷键为 `⌃⌥⇧`，指令模式为 `⌥⇧⌘`，系统 🌐 键设置为不执行任何操作。
+2026-10-15 在 Apple Silicon Mac 上完成当前构建的 Chatterfly 1.0.7.13415 真实键盘验收：用户确认点按 Fn 开始录音，再按 Fn 结束并成功输入文字，调用目标为 Chatterfly。辅助功能与输入监控均已生效，语音输入快捷键为 `⌃⌥⇧`，指令模式为 `⌥⇧⌘`，系统 🌐 键设置为不执行任何操作。Chatterfly 翻译未接入。
 
-**Typeless 2.8.2 已通过当前 Session 投递构建的真实键盘验收：用户确认 Fn 开始、结束录音并上屏均正常，Fn + Shift 翻译正常输出英文。** 原应用与 Voice Switch 使用相同的三键组合：听写 `⌃⌥1`、翻译 `⌃⌘1`，原应用的 Ask anything 为 `⌥⌘1`，三项均已释放 Fn。当前构建的 Chatterfly 回归及两应用来回切换验收仍待确认。
+**Typeless 2.8.2 已通过当前 Session 投递构建的真实键盘验收：用户确认 Fn 开始、结束录音并上屏均正常，Fn + Shift 翻译正常输出英文。** 原应用与 Voice Switch 使用相同的三键组合：听写 `⌃⌥1`、翻译 `⌃⌘1`，原应用的 Ask anything 为 `⌥⌘1`，三项均已释放 Fn。用户通过 `⌃⌥⌘Space` 在 Chatterfly 与 Typeless 之间来回切换，两边 Fn 开始、结束和上屏均正常，只有选中的应用响应。
 
 同一构建的投递对照中，辅助功能、输入监控和事件投递权限均为 `true`。HID 路径在 Session 观测点出现按下/松开间隔压缩；Session 投递的测试按钮能启动、结束录音并产生转写卡片。具体时序见 [投递对照记录](docs/COMPATIBILITY.md#typeless-投递对照)。事件时序变化的发生环节与根因尚未确定，验收记录不保存转写文本。
 
@@ -97,7 +97,7 @@ Typeless 和 Chatterfly 提供「准备导入」按钮：Voice Switch 生成兼�
 
 共享词库已完成文件导入、持久化与重载检查。Chatterfly 的真实导入预览成功扫描生成的 6 条词汇，去重后正确显示 1 条新增词汇；测试停在预览阶段。词库读取失败后的原文件保留，以及 JSON 备份合并后的词条身份，也已验证。
 
-通过结果仅覆盖上述应用版本、构建和已验证链路，不能推定其他应用或其他翻译设置兼容。界面中的当前选择表示按键路由目标。
+通过结果仅覆盖上述应用版本、构建和已验证链路。豆包输入法、微信输入法、Spokenly、闪电说四个模板尚未实测。界面中的当前选择表示按键路由目标。
 
 ## 数据与权限
 
@@ -125,7 +125,9 @@ One-time setup: grant Accessibility and Input Monitoring, remove **all native Fn
 
 The shared vocabulary keeps terms and notes locally. Import or export TXT and headerless single-column CSV, or use JSON for a complete backup. Chatterfly's local dictionary stores encoded or encrypted values, so direct database import is unavailable. The Typeless and Chatterfly handoff prepares a CSV file and opens the vendor app; complete the import in its dictionary UI. Changes are applied manually, without background two-way synchronization.
 
-Typeless 2.8.2 has passed real keyboard testing on the current Session-delivery build: the user confirmed Fn starts and stops dictation with text insertion, and Fn + Shift translation produces English. Chatterfly dictation passed on an earlier build; its regression test and switching between both apps on the current build await confirmation. A same-build comparison observed compressed timing on the HID path; the cause is not established. The shortcut test records up to one second of this app's tagged synthetic-event metadata and permission status locally in `~/Library/Caches/Voice Switch/shortcut-test.log`, replacing the previous test log. It does not record typed or transcribed text.
+Typeless 2.8.2 has passed real keyboard testing with Session delivery on the current build: Fn starts and stops dictation with text insertion, and Fn + Shift translation produces English. Chatterfly 1.0.7.13415 dictation and switching back and forth with `Ctrl + Option + Command + Space` also passed on this build: both apps start, stop, and insert text through Fn, and only the selected app responds. Chatterfly translation is not connected; Doubao, WeType, Spokenly, and Shandianshuo remain untested templates.
+
+A same-build comparison observed compressed timing on the HID path; the cause is not established. The shortcut test records up to one second of this app's tagged synthetic-event metadata and permission status locally in `~/Library/Caches/Voice Switch/shortcut-test.log`, replacing the previous test log. It does not record typed or transcribed text.
 
 Requires macOS 13+. Build with `./scripts/build-app.sh`, or add `--install` to install into `~/Applications`. Source supports native Apple Silicon and Intel builds; the current local build is arm64. Builds are not Developer ID signed or notarized. See [compatibility notes](docs/COMPATIBILITY.md) for evidence and testing limits.
 
