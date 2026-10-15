@@ -24,6 +24,10 @@ final class FnRouter {
     private var pressedKeys: Set<CGKeyCode> = []
     private let eventSource = CGEventSource(stateID: .privateState)
     private var physicalFlags: CGEventFlags = []
+    private lazy var pulses = ShortcutPulseQueue(
+        press: { [weak self] in self?.sendShortcut($0, down: true) },
+        release: { [weak self] in self?.sendShortcut($0, down: false) }
+    )
 
     enum RouterError: LocalizedError {
         case accessibility
@@ -84,6 +88,7 @@ final class FnRouter {
     }
 
     func update(shortcut: Shortcut, translation: Shortcut? = nil) {
+        pulses.cancel()
         guard var machine else { return }
         let effects = machine.update(shortcut: shortcut, translation: translation)
         self.machine = machine
@@ -91,6 +96,7 @@ final class FnRouter {
     }
 
     func stop() {
+        pulses.cancel()
         permissionTimer?.invalidate()
         permissionTimer = nil
         if var machine {
@@ -116,8 +122,7 @@ final class FnRouter {
             onFailure?(RouterError.accessibility.localizedDescription)
             return
         }
-        physicalFlags = CGEventSource.flagsState(.hidSystemState)
-        sendPulse(shortcut)
+        pulses.enqueue(shortcut)
     }
 
     private func receive(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
@@ -180,7 +185,7 @@ final class FnRouter {
             case .pressChanged(let pressed):
                 onPressChanged?(pressed)
             case .pulse(let shortcut):
-                sendPulse(shortcut)
+                pulses.enqueue(shortcut)
             case .translationUnavailable:
                 onUnavailableTranslation?()
             case .restoreFnDown:
@@ -201,28 +206,34 @@ final class FnRouter {
         (56, 60, .maskShift), (55, 54, .maskCommand)
     ]
 
-    private func sendPulse(_ shortcut: Shortcut) {
+    private func sendShortcut(_ shortcut: Shortcut, down: Bool) {
+        // The user may change modifiers during the hold. Read hardware again
+        // for release so an earlier Shift press is never restored after it ends.
+        let hardwareFlags = CGEventSource.flagsState(.hidSystemState)
         let physicalKeys: [(CGKeyCode, CGEventFlags)] = Self.modifierKeys.flatMap { modifier -> [(CGKeyCode, CGEventFlags)] in
-            guard physicalFlags.contains(modifier.flag) else { return [] }
+            guard hardwareFlags.contains(modifier.flag) else { return [] }
             let held = [modifier.left, modifier.right].filter { CGEventSource.keyState(.hidSystemState, key: $0) }
             return (held.isEmpty ? [modifier.left] : held).map { ($0, modifier.flag) }
         }
-        let events = Self.makePulseEvents(
+        let events = Self.makeShortcutEvents(
             shortcut: shortcut,
+            down: down,
             physicalModifiers: physicalKeys,
-            capsLock: physicalFlags.contains(.maskAlphaShift),
+            capsLock: hardwareFlags.contains(.maskAlphaShift),
             source: eventSource
         )
         for event in events {
+            event.timestamp = DispatchTime.now().uptimeNanoseconds
             event.setIntegerValueField(.eventSourceUserData, value: eventTag)
             event.post(tap: .cghidEventTap)
         }
     }
 
-    /// Builds the exact shortcut pulse, bracketed by physical modifier release
-    /// and restoration. Building events alone does not post keyboard input.
-    static func makePulseEvents(
+    /// Builds one phase using the physical modifiers at that phase's execution.
+    /// Building events alone does not post keyboard input.
+    static func makeShortcutEvents(
         shortcut: Shortcut,
+        down: Bool,
         physicalModifiers: [(CGKeyCode, CGEventFlags)],
         capsLock: Bool = false,
         source: CGEventSource? = nil
@@ -256,14 +267,20 @@ final class FnRouter {
 
         // Fn+Shift must produce the exact configured shortcut even while the
         // user's Shift is still held. Restore the physical modifiers afterward.
-        release(physicalModifiers)
-        let targetFlags = press(targetKeys)
-        if !shortcut.isModifierOnly {
-            append(key: shortcut.keyCode, down: true, flags: targetFlags)
-            append(key: shortcut.keyCode, down: false, flags: targetFlags)
+        if down {
+            release(physicalModifiers)
+            let targetFlags = press(targetKeys)
+            if !shortcut.isModifierOnly {
+                append(key: shortcut.keyCode, down: true, flags: targetFlags)
+            }
+        } else {
+            let targetFlags = targetKeys.reduce(baseFlags) { $0.union($1.1) }
+            if !shortcut.isModifierOnly {
+                append(key: shortcut.keyCode, down: false, flags: targetFlags)
+            }
+            release(Array(targetKeys.reversed()))
+            _ = press(physicalModifiers)
         }
-        release(Array(targetKeys.reversed()))
-        _ = press(physicalModifiers)
         return events
     }
 }

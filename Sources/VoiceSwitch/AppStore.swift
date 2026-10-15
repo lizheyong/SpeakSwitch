@@ -22,6 +22,7 @@ final class AppStore: ObservableObject {
     var onHotkeyChanged: ((Bool) -> Void)?
     private let router = FnRouter()
     private var refreshTimer: Timer?
+    private var shortcutTestTask: Task<Void, Never>?
     private let configurationURL: URL
     private var setupDepth = 0
     private var wantsEnabled = false
@@ -94,6 +95,7 @@ final class AppStore: ObservableObject {
             message = "先完成 \(provider.name) 的快捷键接入，再使用 One Fn。"
             return
         }
+        cancelShortcutTest()
         selectedID = provider.id
         router.update(shortcut: provider.shortcut, translation: provider.translationShortcut)
         let saved = persist()
@@ -111,6 +113,7 @@ final class AppStore: ObservableObject {
 
     func setEnabled(_ enabled: Bool) {
         if !enabled {
+            cancelShortcutTest()
             router.stop(); isEnabled = false; isListening = false; isPressing = false
             wantsEnabled = false; persist()
             return
@@ -156,6 +159,7 @@ final class AppStore: ObservableObject {
             }
         }
         guard let index = providers.firstIndex(where: { $0.id == provider.id }) else { return false }
+        cancelShortcutTest()
         providers[index] = provider
         if selectedID == provider.id {
             if provider.isConfigured { router.update(shortcut: provider.shortcut, translation: provider.translationShortcut) }
@@ -176,6 +180,7 @@ final class AppStore: ObservableObject {
     }
 
     func endSetup() {
+        cancelShortcutTest()
         setupDepth = max(0, setupDepth - 1)
         if setupDepth == 0 && wantsEnabled {
             setEnabled(true)
@@ -258,16 +263,30 @@ final class AppStore: ObservableObject {
     }
 
     func testShortcut(_ provider: Provider) {
+        cancelShortcutTest()
         guard hasAccessibility else { message = "请先允许辅助功能，再测试快捷键。"; return }
         message = "3 秒后发送 \(provider.shortcut.display)，请切到一个空白文字输入框。"
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            router.test(shortcut: provider.shortcut)
-            message = "已发送快捷键。确认原应用是否响应；如开始了录音，请在原应用中结束。"
+        shortcutTestTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 3_000_000_000)
+                try Task.checkCancellation()
+            } catch { return }
+            guard let self else { return }
+            self.shortcutTestTask = nil
+            self.router.test(shortcut: provider.shortcut)
+            self.message = "已发送快捷键。确认原应用是否响应；如开始了录音，请在原应用中结束。"
         }
     }
 
-    func shutdown() { router.stop(); refreshTimer?.invalidate() }
+    func shutdown() {
+        cancelShortcutTest()
+        router.stop(); refreshTimer?.invalidate()
+    }
+
+    private func cancelShortcutTest() {
+        shortcutTestTask?.cancel()
+        shortcutTestTask = nil
+    }
 
     private func applicationPanel() -> NSOpenPanel {
         let panel = NSOpenPanel()

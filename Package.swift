@@ -8,6 +8,7 @@ let package = Package(
     targets: [
         .target(name: "VoiceSwitchCore"),
         .executableTarget(name: "VoiceSwitch", dependencies: ["VoiceSwitchCore"]),
-        .testTarget(name: "VoiceSwitchCoreTests", dependencies: ["VoiceSwitchCore"])
+        .testTarget(name: "VoiceSwitchCoreTests", dependencies: ["VoiceSwitchCore"]),
+        .testTarget(name: "VoiceSwitchTests", dependencies: ["VoiceSwitch", "VoiceSwitchCore"])
     ]
 )
