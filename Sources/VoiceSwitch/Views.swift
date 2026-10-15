@@ -584,7 +584,7 @@ private struct ProviderSetupView: View {
                         stepNumber("02")
                         VStack(alignment: .leading, spacing: 7) {
                             Text("接入语音输入").font(.system(size: 12, weight: .semibold))
-                            Text(draft.id == "chatterfly" ? "将下面的组合键设为 Chatterfly 的语音快捷键，最多使用 3 个修饰键。" : "将下面的组合键设为 \(draft.name) 的全局语音快捷键。")
+                            Text(draft.id == "chatterfly" ? "将下面的组合键设为 Chatterfly 的语音快捷键，最多使用 3 个修饰键。" : draft.id == "typeless" ? "将下面的组合键设为 Typeless 的语音快捷键，修饰键和普通键合计最多 3 个。" : "将下面的组合键设为 \(draft.name) 的全局语音快捷键。")
                                 .font(.system(size: 11)).foregroundStyle(Palette.secondary).lineSpacing(3)
                             HStack(spacing: 12) {
                                 Button {
@@ -736,10 +736,7 @@ private struct ProviderSetupView: View {
     }
 
     private var suggestedTranslation: Shortcut {
-        if draft.id == "chatterfly" {
-            return Shortcut(keyCode: UInt16.max, key: "", control: false, option: true, shift: true, command: true)
-        }
-        return Shortcut(keyCode: draft.shortcut.keyCode, key: draft.shortcut.key, control: true, option: false, shift: true, command: true)
+        draft.suggestedTranslationShortcut
     }
 
     private var translationBinding: Binding<Shortcut> {
