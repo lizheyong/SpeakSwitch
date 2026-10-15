@@ -1,0 +1,27 @@
+name: Build macOS app
+
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Fn routing
+        run: ./scripts/test.sh
+      - name: Build Swift package
+        run: swift build
+      - name: Package macOS app
+        run: ./scripts/build-app.sh
+      - name: Upload app archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: Voice-Switch-macOS-unsigned
+          path: dist/*.zip
+          if-no-files-found: error
