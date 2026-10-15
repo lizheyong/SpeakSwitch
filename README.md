@@ -89,7 +89,7 @@ Typeless 和 Chatterfly 提供「准备导入」按钮：Voice Switch 生成兼�
 
 2026-10-15 在 Apple Silicon Mac 上完成 Chatterfly 1.0.7.13415 的真实键盘验收：用户确认点按 Fn 开始录音，再按 Fn 结束并成功输入文字，调用目标为 Chatterfly。辅助功能与输入监控均已生效，语音输入快捷键为 `⌃⌥⇧`，指令模式为 `⌥⇧⌘`，系统 🌐 键设置为不执行任何操作。
 
-Typeless 2.8.1 已检查应用身份和官方能力，尚未完成快捷键接入。其他应用仍为接入模板。Fn + Shift 翻译链路需要支持独立翻译快捷键的应用另行验收。
+Typeless 2.8.1 已在原应用与 Voice Switch 配置相同的三键组合：听写 `⌃⌥1`、翻译 `⌃⌘1`，原应用的 Ask anything 改为 `⌥⌘1`，三项均已释放 Fn。已验证界面可在 Typeless 与 Chatterfly 间切换，两应用进程保持运行。Typeless 的真实 Fn 听写与 Fn + Shift 翻译上屏仍待用户验收，其他应用仍为接入模板。
 
 31 项测试覆盖 Fn / Shift + Fn、普通组合键透传、切换时取消手势、监听中断、快捷键冲突与配置序列化、Typeless 三键建议，以及词表格式、去重和备份合并身份。原生事件构造检查覆盖左右 Shift 恢复、纯修饰键及 Caps Lock。已完成 arm64 应用构建、ad-hoc 签名校验及主界面运行检查。
 
