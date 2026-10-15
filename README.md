@@ -1,138 +1,138 @@
-# Voice Switch
+# 声选 · SpeakSwitch
 
-**一个 Fn，切换你正在用的语音输入法。**
+**语音输入切换器。一个 Fn，自由选择你正在用的语音输入法。**
 
-Voice Switch 是 macOS 菜单栏应用。选中 Typeless、Chatterfly 或其他语音工具后，继续用同一个 Fn 键说话。应用保持运行，点击菜单栏即可切换，也可以按 `⌃⌥⌘Space` 在已接入的应用之间循环选择。
+[下载 v0.1.0 · Apple Silicon](https://github.com/lizheyong/SpeakSwitch/releases/download/v0.1.0/SpeakSwitch-arm64.zip) · [版本发布](https://github.com/lizheyong/SpeakSwitch/releases) · [兼容性记录](docs/COMPATIBILITY.md) · [反馈问题](https://github.com/lizheyong/SpeakSwitch/issues)
 
-| 按键 | 行为 |
+![SpeakSwitch 麦克风回转箭头标识与菜单栏图标](docs/assets/brand-preview.png)
+
+语音输入法越来越多，体验、价格和免费额度也在变化。想换一家试试，却要重新适应快捷键，还可能遇到几个应用同时占用 Fn。
+
+声选是原生 macOS 菜单栏应用：完成一次接入后，用同一个 **Fn** 说话，随时切换 Typeless、Chatterfly、微信输入法或其他工具。原应用继续负责识别、翻译和文字上屏，也继续使用自己的账号与额度。
+
+## 能做什么
+
+- **One Fn**：点按开始，再按结束。点击菜单栏切换输入法，或用 `⌃⌥⌘Space` 循环选择。应用保持驻留，切换时更新快捷键的发送目标。
+- **共享词表**：在本机维护常用词和备注，导入、导出 TXT / CSV，并用 JSON 备份；为支持导入的应用准备词表。
+- **本机统计**：按输入法查看启动次数、估算使用时长和听写／翻译分布，了解自己更常用哪一款。
+- **原生 Mac 体验**：系统菜单、分栏表单、深浅色外观、真实应用图标和切换提示；支持添加自己的 `.app`。
+
+| 按键 | 操作 |
 | --- | --- |
-| `Fn` | 按一下开始语音输入，再按一下结束 |
-| `Fn + Shift` | 触发当前应用已配置的翻译快捷键 |
-| `⌃⌥⌘Space` | 切换到下一个已接入的应用 |
+| `Fn` | 点按开始语音输入，再按一次结束 |
+| `Shift + Fn` | 触发当前应用已接入的翻译动作 |
+| `Control + Option + Command + Space` | 切换到下一个已接入的应用 |
 
-原应用继续负责录音、识别、翻译、文字整理和上屏，也继续使用自己的账号与额度。Voice Switch 负责把按键转发成当前应用独有的内部快捷键。
+切换输入法前先结束当前录音。声选转发快捷键，录音状态和上屏结果以原应用为准。翻译需要原应用提供对应功能；Typeless 用 `Shift + Fn` 开始、单独按 `Fn` 结束。
 
-## 工作方式
+## 安装
 
-```text
-Fn 松开          → 当前应用的语音输入快捷键 → 原应用开始或结束录音
-Fn + Shift 松开  → 当前应用的翻译快捷键     → 原应用执行翻译
-```
+需要 **macOS 13+**。v0.1.0 下载包面向 **Apple Silicon（arm64）**；Intel Mac 可以[从源码构建](#从源码构建)。
 
-每个应用完成一次快捷键设置后，日常只需选择当前应用。切换时更新按键路由；尚未启动的目标应用会启动一次，其他语音应用可以继续驻留。
+1. 下载 [SpeakSwitch-arm64.zip](https://github.com/lizheyong/SpeakSwitch/releases/download/v0.1.0/SpeakSwitch-arm64.zip)。
+2. 解压后，将 `声选.app` 放到 `~/Applications` 或 `/Applications`，从固定位置打开。
+3. 跟随接入助手完成权限和快捷键设置。
 
-Voice Switch 使用原生 SwiftUI、AppKit 和 Core Graphics，无第三方依赖。内置 Typeless、Chatterfly、豆包输入法、微信输入法、Spokenly、闪电说的接入模板，也可以选择自己的 `.app` 添加工具。模板表示预置名称、查找位置和快捷键建议，具体兼容状态见 [兼容性记录](docs/COMPATIBILITY.md)。
+**此版本未使用 Developer ID 签名，也未经过 Apple 公证。** 只在信任源码及下载来源后运行。若 macOS 阻止打开，先尝试启动应用，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」；具体操作见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。也可以自行审核源码并构建。
 
-界面采用暖白与浅米灰表面、宋体标题和开放式列表。输入法优先显示本机应用的真实图标，未安装时使用离线打包的官方品牌图标；来源与权利归属见 [图标说明](docs/ASSETS.md)。
+## 四步上手
 
-## 构建与安装
+1. **选择输入法**：助手检测已安装的应用，也支持手动添加 `.app`。原应用先完成自身登录、麦克风及文字输入权限设置。
+2. **允许系统权限**：给声选开启「辅助功能」和「输入监控」。部分 macOS 将辅助功能显示为「设备控制和数据访问」。返回后状态会刷新；按系统要求重开声选后，可以继续助手进度。声选不需要麦克风权限。
+3. **设置专属快捷键**：按应用内教程，把同一组组合键分别设置到原应用和声选，释放所有原生 Fn 绑定，再点击「保存并选用」。
+4. **亲自试用 Fn**：在助手的练习区或常用输入框中，点按 Fn 开始、再按 Fn 结束。确认文字上屏后勾选结果并完成。
 
-应用支持 macOS 13 或更新版本。编译需要 Xcode 或 Command Line Tools；测试使用 Swift Testing，需要 Swift 6 和 macOS 14 或更新版本。
+可以回退或「稍后设置」，已保存的配置会保留。练习文字只在内存中临时显示，退出助手后清空。
+
+**释放 Fn 时要检查所有常驻语音应用**，包括未加入声选的应用。系统键盘的「按下 🌐 / Fn 键时」应设为「不执行任何操作」，系统听写也改用不含 Fn 的快捷键。几个容易遗漏的设置：
+
+| 应用 | 语音输入建议 | 还需要检查 |
+| --- | --- | --- |
+| Typeless | 左 Control + 左 Option + `1`（`⌃⌥1`） | 设置 → Keyboard shortcuts：翻译可用 `⌃⌘1`；随便问的 `Fn + Space` 改为 `⌥⌘1`，并清理其他 Fn 绑定。每组最多 3 个键 |
+| Chatterfly | Control + Option + Shift（`⌃⌥⇧`） | 指令模式的双击 Fn 改为 `⌥⇧⌘`。快捷键使用最多 3 个修饰键；AI 指令与翻译是不同动作 |
+| 微信输入法 | 左 Control + 左 Option + `2`（`⌃⌥2`） | 设置「启动语音输入」，释放原 `Fn + Space`；选择点按启动的功能，区别于「按住说话」 |
+
+微信语音输入需要系统当前选中微信输入源。声选在选用微信、启用 Fn 或准备测试时会选择它；手动切到 ABC 后，请重新选用微信或点击「重新准备试用」。
+
+设置页打开期间 Fn 接管暂停。折叠的排查工具可在 3 秒后发送原应用快捷键；若开始录音，使用原应用快捷键结束，关闭设置页后再试 Fn。
+
+## 兼容性
+
+| 输入法 | 已记录的语音输入实测 | 翻译 |
+| --- | --- | --- |
+| Typeless 2.8.2 | Fn 开始、结束、文字上屏；与 Chatterfly 切换 | 已实测 |
+| Chatterfly 1.0.7.13415 | Fn 开始、结束、文字上屏；与 Typeless 切换 | 未接入 |
+| 微信输入法 2.2.3 (657) | Fn 开始、持续录音、结束、文字上屏；自动选择微信输入源 | 未接入 |
+| 豆包输入法 | 接入模板，尚未实测 | 待确认 |
+| Spokenly | 接入模板，尚未实测 | 待确认 |
+| 闪电说 | 接入模板，尚未实测 | 待确认 |
+
+### 当前验证范围
+
+实测覆盖记录中的应用版本与构建：Typeless 和 Chatterfly 对应功能构建 `9da51c9`，微信对应随后完成的原生界面构建。当前代码通过 **61/61 项测试**（18 项应用测试、43 项核心测试）。更名后的四步助手、权限状态、滚动与底栏、试用确认按钮及设置页已完成本机界面检查；原有输入法配置保留，Fn 已就绪。三款输入法的真人语音结果沿用对应功能构建的记录，尚未在更名后的发布包逐项重测。完整证据与限制见 [兼容性记录](docs/COMPATIBILITY.md)。
+
+自定义应用需要提供可配置的全局快捷键、支持点按切换录音，并接受系统合成键盘事件。声选不会修改第三方应用的私有快捷键配置。外接键盘的 Fn 若仅在键盘固件内部工作，macOS 无法将它交给声选。
+
+## 共享词表
+
+在「共享词库」维护一份标准词表，支持词语、备注、搜索、编辑和文件导入导出：
+
+| 格式 | 内容 |
+| --- | --- |
+| TXT | 每行一个词 |
+| CSV | UTF-8、单列、无表头，每行一个词 |
+| JSON | 完整备份，保留词语和备注 |
+
+Typeless 和 Chatterfly 的「准备导入」会生成 CSV、在 Finder 中定位文件并打开原应用。随后由你在原应用词库中导入、检查预览并确认。
+
+**这是手动词表交接，没有后台双向同步。** 修改或删除本机词条不会自动改变原应用的词库。已有词条通过文件导入或手动整理；声选不直接读取或写入第三方私有词库数据库。备注与纠错替换规则不会作为标准词发送。各家的格式与入口见 [词库兼容性](docs/COMPATIBILITY.md#共享词库兼容性)。
+
+## 从源码构建
+
+使用 Xcode 或 Command Line Tools。测试需要 Swift 6 和 macOS 14+；应用最低运行版本为 macOS 13。项目使用 SwiftUI、AppKit、Core Graphics，无第三方依赖。
 
 ```sh
+git clone https://github.com/lizheyong/SpeakSwitch.git
+cd SpeakSwitch
 ./scripts/test.sh
 ./scripts/build-app.sh --install
-open "$HOME/Applications/Voice Switch.app"
+open "$HOME/Applications/声选.app"
 ```
 
-构建脚本生成 `dist/Voice Switch.app` 和 ZIP 压缩包；`--install` 将应用安装到 `~/Applications/Voice Switch.app`。只构建时运行：
+只构建、不安装：
 
 ```sh
 swift build --build-system native
 ./scripts/build-app.sh
 ```
 
-给完整 `.app` 授权并从固定安装位置启动，更便于 macOS 识别应用权限。
-
-源码支持在 Apple Silicon 和 Intel Mac 上本机编译。当前本地构建为 arm64，构建脚本产物采用构建机器的架构。产物用于本地运行，未经过 Developer ID 签名与 Apple 公证。GitHub Actions 会运行测试、构建并上传应用压缩包。
-
-## 首次接入
-
-1. 在系统设置 → 隐私与安全性中，给 **Voice Switch** 开启「辅助功能」和「输入监控」。按系统提示重新打开应用。
-2. 在系统设置 → 键盘中，把「按下 🌐 / Fn 键以」设为「不执行任何操作」。同时移除系统听写对 Fn 的占用；可以关闭听写，或为听写设置不含 Fn 的快捷键。
-3. 打开每个会运行的语音应用，移除其**所有含 Fn 的原生快捷键**，包括 Fn + Shift、翻译、AI 指令等其他功能。为语音输入设置独有的内部快捷键，原应用提供触发方式选项时选择「按一下开始，再按一下结束」。
-4. 在 Voice Switch 的接入面板填写相同的语音输入快捷键。Typeless 最多接受 3 个键，语音输入建议 `⌃⌥1`、翻译建议 `⌃⌘1`；Chatterfly 建议使用纯修饰键 `⌃⌥⇧`。其他应用按当前版本支持的组合设置。
-5. 需要翻译时，在原应用中设置一个独立的翻译快捷键，并填写到 Voice Switch 的可选翻译设置。先在原应用确认它确实触发翻译。
-6. 测试原应用响应后完成接入，选中它并开启 One Fn。在空白文字输入框内测试 Fn 开始与结束，以及 Fn + Shift 翻译。
-
-请完成所有正在运行的语音应用的 Fn 设置，即使某个应用还没有加入 Voice Switch。其他应用保留原生 Fn 监听时，仍可能同时触发。
-
-纯修饰键快捷键需要避开其他快捷键的前缀。例如 Chatterfly 使用 `⌃⌥⇧`，其他应用使用 `⌃⌥⌘` 加数字，避免按下组合键的前半段就触发另一个应用。
-
-添加新工具时，选择真正负责语音输入的 `.app`，按照同样步骤设置。系统输入法通常在 `/Library/Input Methods` 或 `~/Library/Input Methods`。它需要支持可配置的全局快捷键，并能接收系统合成键盘事件。
-
-## 按键行为
-
-松开 Fn 时，Voice Switch 发送一次完整的快捷键按下与松开。原应用按自己的切换规则开始或结束录音，按住 Fn 不会变成持续按住目标快捷键。
-
-Fn 与 Shift 组成独立翻译手势，调用用户配置的翻译快捷键。Voice Switch 不会为原应用增加翻译能力，也不会把 AI 指令自动当作翻译。Typeless 的官方用法是 Fn + Shift 开始翻译，再按主语音快捷键 Fn 结束；其他应用需要按自己的行为验收。
-
-Fn + Delete 等其他组合键交给系统处理。关闭 One Fn 后，原应用的内部快捷键设置保留，可以直接使用这些快捷键。
-
-切换应用前先结束当前录音。各语音应用的录音状态接口不同，Voice Switch 当前仅管理按键路由；界面的按键指示表示 Fn 按下，录音是否进行以原应用为准。
-
-## 共享词库
-
-在「共享词库」维护一份本机主词库，保存常用词和可选备注。可以搜索、编辑、删除词条，也可以导入已有词表。重复词合并时保留本机已有内容。
-
-已有词条可以通过 TXT、单列 CSV 或 Voice Switch 的 JSON 备份导入。Chatterfly 1.0.7.13415 的本机数据库保存的是编码或加密后的词条表示，不能直接将 SQLite 字段作为明文词语读取。当前请使用已有的兼容词表文件，或在共享词库中维护标准写法，再通过 CSV 交给原应用。
-
-| 格式 | 用途 |
-| --- | --- |
-| TXT | 每行一个词，导入和导出通用词表 |
-| CSV | 无表头、单列、每行一个词，导入和导出词表 |
-| JSON | Voice Switch 完整备份格式，保留词条与备注，可重新导入 |
-
-Typeless 和 Chatterfly 提供「准备导入」按钮：Voice Switch 生成兼容的单列 CSV，在 Finder 中定位文件，并打开对应应用或设置。随后在原应用的词库中选择「导入 CSV」，检查预览并确认。Typeless 的入口是 Dictionary → New word → Import CSV；Chatterfly 的入口是个人词库 → 添加新词 → 导入 CSV。
-
-共享词库的修改需要再次导入到原应用。当前没有后台双向同步，Voice Switch 中删除词条也不会删除原应用的词条。备注保留在本机主词库和 JSON 备份中；语音应用的纠错替换规则由原应用管理。其他应用可使用导出的词表，具体格式与能力见 [词库兼容性](docs/COMPATIBILITY.md#共享词库兼容性)。
-
-## 当前验证范围
-
-2026-10-15 在 Apple Silicon Mac 上完成当前构建的 Chatterfly 1.0.7.13415 真实键盘验收：用户确认点按 Fn 开始录音，再按 Fn 结束并成功输入文字，调用目标为 Chatterfly。辅助功能与输入监控均已生效，语音输入快捷键为 `⌃⌥⇧`，指令模式为 `⌥⇧⌘`，系统 🌐 键设置为不执行任何操作。Chatterfly 翻译未接入。
-
-**Typeless 2.8.2 已通过当前 Session 投递构建的真实键盘验收：用户确认 Fn 开始、结束录音并上屏均正常，Fn + Shift 翻译正常输出英文。** 原应用与 Voice Switch 使用相同的三键组合：听写 `⌃⌥1`、翻译 `⌃⌘1`，原应用的 Ask anything 为 `⌥⌘1`，三项均已释放 Fn。用户通过 `⌃⌥⌘Space` 在 Chatterfly 与 Typeless 之间来回切换，两边 Fn 开始、结束和上屏均正常，只有选中的应用响应。
-
-同一构建的投递对照中，辅助功能、输入监控和事件投递权限均为 `true`。HID 路径在 Session 观测点出现按下/松开间隔压缩；Session 投递的测试按钮能启动、结束录音并产生转写卡片。具体时序见 [投递对照记录](docs/COMPATIBILITY.md#typeless-投递对照)。事件时序变化的发生环节与根因尚未确定，验收记录不保存转写文本。
-
-42/42 项测试通过，覆盖 Fn / Shift + Fn、普通组合键透传、切换时取消手势、监听中断、快捷键冲突与配置序列化、Typeless 三键建议，以及词表格式、去重和备份合并身份。事件测试覆盖 16 ms 采样正反对照、快速连按、取消后的延时回调、保持期间的 Shift 恢复，以及诊断事件标记过滤。原生事件测试只构造事件，不发送真实键盘输入；实际兼容性以原应用响应和上屏结果为准。已完成 arm64 应用构建、ad-hoc 签名校验及主界面运行检查。
-
-共享词库已完成文件导入、持久化与重载检查。Chatterfly 的真实导入预览成功扫描生成的 6 条词汇，去重后正确显示 1 条新增词汇；测试停在预览阶段。词库读取失败后的原文件保留，以及 JSON 备份合并后的词条身份，也已验证。
-
-通过结果仅覆盖上述应用版本、构建和已验证链路。豆包输入法、微信输入法、Spokenly、闪电说四个模板尚未实测。界面中的当前选择表示按键路由目标。
+产物为 `dist/声选.app` 和 `dist/SpeakSwitch-<架构>.zip`；`--install` 安装到 `~/Applications/声选.app`。源码支持 Apple Silicon 与 Intel 本机编译。GitHub Actions 运行测试、构建并上传 `SpeakSwitch-macOS-unsigned` 产物。
 
 ## 数据与权限
 
-Voice Switch 在本机处理快捷键事件，不录音，不记录键入内容，不调用网络服务。应用配置、主动添加或导入的词条，以及准备交给原应用的词表，保存在：
+声选在本机处理快捷键，**不录音、不记录其他应用中的键入内容，不调用语音模型或网络服务**。语音应用自行处理音频、网络请求、账号和额度。点击官网链接会打开浏览器。
 
-```text
-~/Library/Application Support/Voice Switch/configuration.json
-~/Library/Application Support/Voice Switch/vocabulary.json
-~/Library/Application Support/Voice Switch/Exports/
-```
+- **辅助功能**用于发送快捷键，**输入监控**用于接收 Fn 与组合键。
+- **练习输入区**仅在内存中临时显示文字，退出助手后清空。助手只保存步骤、选择和确认状态。
+- **使用统计**记录输入法、听写／翻译类型与开始／结束时间。时长由 One Fn 操作配对估算，不能证明原应用实际录音，也不包含直接在原应用中启动的使用。
+- **快捷键诊断**只保存短时、带本应用标记的合成事件元数据及权限、修饰键状态，不保存键入或转写正文；每次测试覆盖上一份。
 
-点击「测试语音快捷键」后，应用在发送测试按键时启动最多一秒的诊断观察。日志包含权限状态、HID / Session 投递与观测位置，以及带有 Voice Switch 自有标记的合成事件元数据（时间、事件类型、键码、修饰键和事件来源）。真实键盘输入文本不进入日志。日志仅保存在本机，每次测试覆盖上一份：
+配置、词库和统计保存在 `~/Library/Application Support/Voice Switch/`；诊断日志为 `~/Library/Caches/Voice Switch/shortcut-test.log`。目录保留原名称，已有数据无需迁移。
 
-```text
-~/Library/Caches/Voice Switch/shortcut-test.log
-```
+## 参与改进
 
-「辅助功能」用于转发快捷键，「输入监控」用于识别 Fn 与组合键。语音应用自行管理麦克风权限、语音数据和网络请求；点击官网入口会通过浏览器打开对应网站。
+欢迎提交 [Issue](https://github.com/lizheyong/SpeakSwitch/issues) 或 Pull Request。反馈接入问题时，请附上 macOS 版本、输入法版本、快捷键设置，以及原应用快捷键和 Fn 各自的响应；无需提供音频或转写正文。
+
+更多说明：[兼容性与排查](docs/COMPATIBILITY.md) · [界面设计](docs/DESIGN.md) · [图标来源](docs/ASSETS.md)
 
 ## English
 
-Voice Switch is a native macOS menu bar app that routes **one Fn key** to the selected dictation app. Tap Fn to start and tap again to stop; Fn + Shift triggers the app's separately configured translation shortcut. Apps stay running, so switching only changes the routing target.
+**SpeakSwitch** is a native macOS voice input switcher. Keep **one Fn key** while switching between dictation apps as their experience, pricing, and free allowances change. Apps stay running; SpeakSwitch routes a dedicated shortcut to the selected app.
 
-One-time setup: grant Accessibility and Input Monitoring, remove **all native Fn bindings** from every running dictation app, assign unique internal shortcuts, and test each integration. Configure toggle mode where the app offers it. Chatterfly uses a modifier-only combination of up to three keys. Translation requires an actual translation action in the target app.
+It includes a four-step setup assistant, a local shared vocabulary with TXT/CSV import and export, JSON backups, and local usage estimates. Dictionary handoff is manual, without background two-way synchronization. Typeless, Chatterfly, and WeType have recorded real-keyboard acceptance; only Typeless translation has been verified. Other bundled providers are untested templates. See the [compatibility record](docs/COMPATIBILITY.md) for versions and build boundaries.
 
-The shared vocabulary keeps terms and notes locally. Import or export TXT and headerless single-column CSV, or use JSON for a complete backup. Chatterfly's local dictionary stores encoded or encrypted values, so direct database import is unavailable. The Typeless and Chatterfly handoff prepares a CSV file and opens the vendor app; complete the import in its dictionary UI. Changes are applied manually, without background two-way synchronization.
-
-Typeless 2.8.2 has passed real keyboard testing with Session delivery on the current build: Fn starts and stops dictation with text insertion, and Fn + Shift translation produces English. Chatterfly 1.0.7.13415 dictation and switching back and forth with `Ctrl + Option + Command + Space` also passed on this build: both apps start, stop, and insert text through Fn, and only the selected app responds. Chatterfly translation is not connected; Doubao, WeType, Spokenly, and Shandianshuo remain untested templates.
-
-A same-build comparison observed compressed timing on the HID path; the cause is not established. The shortcut test records up to one second of this app's tagged synthetic-event metadata and permission status locally in `~/Library/Caches/Voice Switch/shortcut-test.log`, replacing the previous test log. It does not record typed or transcribed text.
-
-Requires macOS 13+. Build with `./scripts/build-app.sh`, or add `--install` to install into `~/Applications`. Source supports native Apple Silicon and Intel builds; the current local build is arm64. Builds are not Developer ID signed or notarized. See [compatibility notes](docs/COMPATIBILITY.md) for evidence and testing limits.
+[Download v0.1.0 for Apple Silicon](https://github.com/lizheyong/SpeakSwitch/releases/download/v0.1.0/SpeakSwitch-arm64.zip). Requires macOS 13+. Intel users can build from source. This release is not Developer ID signed or notarized: run it only if you trust the source and download, and follow macOS Privacy & Security prompts to open it. SpeakSwitch does not record audio or log typing in other apps; practice text is temporary in-memory content.
 
 ## License
 
-[MIT](LICENSE) © Voice Switch contributors.
+[MIT](LICENSE) © Voice Switch contributors. Third-party icons and trademarks remain the property of their owners; see [asset attribution](docs/ASSETS.md).

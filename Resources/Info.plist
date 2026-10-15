@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
     <key>CFBundleIdentifier</key><string>app.voiceswitch.mac</string>
-    <key>CFBundleName</key><string>Voice Switch</string>
-    <key>CFBundleDisplayName</key><string>Voice Switch</string>
+    <key>CFBundleName</key><string>SpeakSwitch</string>
+    <key>CFBundleDisplayName</key><string>声选</string>
     <key>CFBundleExecutable</key><string>VoiceSwitch</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
@@ -13,5 +13,5 @@
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
-    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Voice Switch contributors. MIT License.</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 SpeakSwitch contributors. MIT License.</string>
 </dict></plist>

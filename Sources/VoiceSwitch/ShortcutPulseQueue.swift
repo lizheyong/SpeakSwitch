@@ -6,6 +6,7 @@ import VoiceSwitchCore
 final class ShortcutPulseQueue {
     private enum Phase {
         case idle
+        case waiting
         case holding(Shortcut)
         case gap
     }
@@ -31,7 +32,16 @@ final class ShortcutPulseQueue {
 
     func enqueue(_ shortcut: Shortcut) {
         queued.append(shortcut)
-        if case .idle = phase { startNext() }
+        if case .idle = phase {
+            phase = .waiting
+            let current = generation
+            // Let the physical Fn event finish its tap callback before posting
+            // the provider shortcut back into the event stream.
+            schedule(0) { [weak self] in
+                guard let self, self.generation == current else { return }
+                self.startNext()
+            }
+        }
     }
 
     /// Ends the original shortcut once and discards gestures that have not begun.

@@ -7,6 +7,7 @@ import VoiceSwitchCore
 @MainActor
 final class AppStore: ObservableObject {
     let vocabulary = VocabularyStore()
+    let usage = UsageStore()
     @Published var providers: [Provider] = Provider.catalog
     @Published var selectedID: String?
     @Published var isEnabled = false
@@ -17,11 +18,15 @@ final class AppStore: ObservableObject {
     @Published var message: String?
     @Published var launchAtLogin = false
     @Published var hotkeyEnabled = true
+    @Published var showsProviderNameInMenuBar = false
+    @Published var showsSetupAssistant = false
     @Published private var installedPaths: [String: URL] = [:]
     @Published private var runningBundleIDs: Set<String> = []
     var onHotkeyChanged: ((Bool) -> Void)?
+    var onProviderSelected: ((Provider) -> Void)?
     private let router = FnRouter()
     private var refreshTimer: Timer?
+    private var sleepObserver: NSObjectProtocol?
     private var shortcutTestTask: Task<Void, Never>?
     private let configurationURL: URL
     private var setupDepth = 0
@@ -32,6 +37,7 @@ final class AppStore: ObservableObject {
         var selectedID: String?
         var hotkeyEnabled: Bool
         var isEnabled: Bool?
+        var showsProviderNameInMenuBar: Bool?
     }
 
     var selectedProvider: Provider? { providers.first { $0.id == selectedID } }
@@ -43,6 +49,7 @@ final class AppStore: ObservableObject {
         load()
         router.onPressChanged = { [weak self] pressing in self?.isPressing = pressing }
         router.onFailure = { [weak self] error in
+            self?.usage.interrupt()
             self?.isEnabled = false
             self?.isListening = false
             self?.message = error
@@ -50,7 +57,20 @@ final class AppStore: ObservableObject {
         router.onUnavailableTranslation = { [weak self] in
             self?.message = "当前输入法尚未接入翻译。请在接入设置中指定它的翻译快捷键。"
         }
+        router.onPulse = { [weak self] shortcut in
+            guard let self, let provider = self.selectedProvider else { return }
+            self.usage.recordPulse(provider: provider, mode: shortcut == provider.translationShortcut ? .translation : .dictation)
+        }
+        router.onInterrupted = { [weak self] in self?.usage.interrupt() }
+        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.usage.interrupt() }
+        }
         refresh()
+        let preferences = UserDefaults.standard
+        showsSetupAssistant = preferences.bool(forKey: "setupAssistantInProgress")
+            || (!preferences.bool(forKey: "setupAssistantDeferred") && !providers.contains(where: \.isConfigured))
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -77,7 +97,13 @@ final class AppStore: ObservableObject {
         if hasAccessibility != accessibility { hasAccessibility = accessibility }
         if hasInputMonitoring != inputMonitoring { hasInputMonitoring = inputMonitoring }
         if launchAtLogin != loginEnabled { launchAtLogin = loginEnabled }
-        if runningBundleIDs != running { runningBundleIDs = running }
+        if runningBundleIDs != running {
+            let selectedWasRunning = selectedProvider.map { isRunning($0) } ?? false
+            runningBundleIDs = running
+            if selectedWasRunning, let selected = selectedProvider, !isRunning(selected) {
+                usage.interrupt()
+            }
+        }
         if installedPaths != paths { installedPaths = paths }
         if isEnabled && (!hasAccessibility || !hasInputMonitoring) {
             setEnabled(false)
@@ -89,19 +115,24 @@ final class AppStore: ObservableObject {
         }
     }
 
-    func select(_ provider: Provider) {
-        guard let provider = providers.first(where: { $0.id == provider.id }) else { return }
+    @discardableResult
+    func select(_ provider: Provider) -> Bool {
+        guard let provider = providers.first(where: { $0.id == provider.id }) else { return false }
         guard provider.isConfigured, isInstalled(provider) else {
-            message = "先完成 \(provider.name) 的快捷键接入，再使用 One Fn。"
-            return
+            message = "先完成 \(provider.name) 的快捷键接入，再启用 Fn。"
+            return false
         }
+        guard selectRequiredInputSource(for: provider) else { return false }
         cancelShortcutTest()
+        if selectedID != provider.id { usage.interrupt() }
         selectedID = provider.id
         router.update(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery)
         let saved = persist()
         launch(provider)
         if isEnabled { isListening = router.isRunning }
         if saved { message = "已选择 \(provider.name) · Fn → \(provider.shortcut.display)" }
+        onProviderSelected?(provider)
+        return true
     }
 
     func selectNext() {
@@ -114,18 +145,24 @@ final class AppStore: ObservableObject {
     func setEnabled(_ enabled: Bool) {
         if !enabled {
             cancelShortcutTest()
+            usage.interrupt()
             router.stop(); isEnabled = false; isListening = false; isPressing = false
             wantsEnabled = false; persist()
             return
         }
         guard let provider = selectedProvider, provider.isConfigured, isInstalled(provider) else {
-            message = "先接入并选择一个输入法，然后开启 One Fn。"; return
+            message = "先接入并选择一个输入法，然后启用 Fn。"; return
         }
         guard hasAccessibility && hasInputMonitoring else {
-            message = "请在设置中允许 Voice Switch 使用辅助功能与输入监控。"; return
+            message = "请在设置中允许声选使用辅助功能与输入监控。"; return
         }
         if setupDepth > 0 {
             isEnabled = true; wantsEnabled = true; persist()
+            return
+        }
+        guard selectRequiredInputSource(for: provider) else {
+            usage.interrupt()
+            router.stop(); isEnabled = false; isListening = false; isPressing = false
             return
         }
         do {
@@ -162,18 +199,20 @@ final class AppStore: ObservableObject {
         cancelShortcutTest()
         providers[index] = provider
         if selectedID == provider.id {
+            usage.interrupt()
             if provider.isConfigured { router.update(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery) }
             else { setEnabled(false) }
         }
         guard persist() else { refresh(); return false }
         refresh()
-        if selectedID == nil && provider.isConfigured { select(provider) }
         message = provider.isConfigured ? "\(provider.name) 已接入。请在文字输入框中试一下 Fn。" : "已保存 \(provider.name) 的设置。"
+        if selectedID == nil && provider.isConfigured { select(provider) }
         return true
     }
 
     func beginSetup() {
         if setupDepth == 0 {
+            usage.interrupt()
             router.stop(); isListening = false
         }
         setupDepth += 1
@@ -220,6 +259,8 @@ final class AppStore: ObservableObject {
             open(url, activates: true)
         } else if provider.id == "chatterfly", let root = installedPaths[provider.id] {
             open(root.appendingPathComponent("Contents/ChatterflyPreference.app"), activates: true)
+        } else if provider.id == "wetype", let root = installedPaths[provider.id] {
+            open(root.appendingPathComponent("Contents/MacOS/WeTypeSettings.app"), activates: true)
         } else if let url = installedPaths[provider.id] { open(url, activates: true) }
         else { message = "请先安装或定位 \(provider.name)。" }
     }
@@ -248,7 +289,7 @@ final class AppStore: ObservableObject {
             if enabled { try SMAppService.mainApp.register() }
             else { try SMAppService.mainApp.unregister() }
             launchAtLogin = SMAppService.mainApp.status == .enabled
-            if enabled && !launchAtLogin { message = "请在系统设置 → 登录项中允许 Voice Switch 在登录时打开。" }
+            if enabled && !launchAtLogin { message = "请在系统设置 → 登录项中允许声选在登录时打开。" }
         } catch { message = "无法更新登录项：\(error.localizedDescription)" }
     }
 
@@ -262,9 +303,20 @@ final class AppStore: ObservableObject {
         hotkeyEnabled = enabled; onHotkeyChanged?(enabled); persist()
     }
 
+    func setShowsProviderNameInMenuBar(_ enabled: Bool) {
+        showsProviderNameInMenuBar = enabled
+        persist()
+    }
+
+    func revealApplication() {
+        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+    }
+
     func testShortcut(_ provider: Provider) {
         cancelShortcutTest()
         guard hasAccessibility else { message = "请先允许辅助功能，再测试快捷键。"; return }
+        guard selectRequiredInputSource(for: provider) else { return }
+        launch(provider)
         message = "3 秒后发送 \(provider.shortcut.display)，请切到一个空白文字输入框。"
         shortcutTestTask = Task { @MainActor [weak self] in
             do {
@@ -281,7 +333,11 @@ final class AppStore: ObservableObject {
 
     func shutdown() {
         cancelShortcutTest()
+        usage.interrupt()
+        if let sleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver) }
+        sleepObserver = nil
         router.stop(); refreshTimer?.invalidate()
+        usage.finishSaving()
     }
 
     private func cancelShortcutTest() {
@@ -315,6 +371,17 @@ final class AppStore: ObservableObject {
         if !isRunning(provider), let url = installedPaths[provider.id] { open(url, activates: false) }
     }
 
+    private func selectRequiredInputSource(for provider: Provider) -> Bool {
+        guard provider.id == "wetype" else { return true }
+        do {
+            try WeTypeInputSource.select()
+            return true
+        } catch {
+            message = error.localizedDescription
+            return false
+        }
+    }
+
     private func open(_ url: URL, activates: Bool) {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = activates
@@ -327,9 +394,14 @@ final class AppStore: ObservableObject {
         guard FileManager.default.fileExists(atPath: configurationURL.path) else { return }
         do {
             let saved = try JSONDecoder().decode(Configuration.self, from: Data(contentsOf: configurationURL))
-            providers = saved.providers + Provider.catalog.filter { candidate in !saved.providers.contains { $0.id == candidate.id } }
+            providers = saved.providers.map { stored in
+                var provider = stored
+                provider.updateUnconfiguredShortcutSuggestion()
+                return provider
+            } + Provider.catalog.filter { candidate in !saved.providers.contains { $0.id == candidate.id } }
             selectedID = saved.selectedID; hotkeyEnabled = saved.hotkeyEnabled
             wantsEnabled = saved.isEnabled ?? false
+            showsProviderNameInMenuBar = saved.showsProviderNameInMenuBar ?? false
         } catch { message = "配置读取失败：\(error.localizedDescription)" }
     }
 
@@ -338,7 +410,7 @@ final class AppStore: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: configurationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(Configuration(providers: providers, selectedID: selectedID, hotkeyEnabled: hotkeyEnabled, isEnabled: wantsEnabled))
+            let data = try encoder.encode(Configuration(providers: providers, selectedID: selectedID, hotkeyEnabled: hotkeyEnabled, isEnabled: wantsEnabled, showsProviderNameInMenuBar: showsProviderNameInMenuBar))
             try data.write(to: configurationURL, options: .atomic)
             return true
         } catch { message = "配置保存失败：\(error.localizedDescription)"; return false }

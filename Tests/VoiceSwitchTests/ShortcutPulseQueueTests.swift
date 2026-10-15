@@ -8,6 +8,52 @@ import VoiceSwitchCore
     private let first = Shortcut(keyCode: 18, key: "1", command: false)
     private let second = Shortcut(keyCode: 18, key: "1", option: false)
 
+    @Test func sameTurnEnqueuesWaitForTheCallbackToReturnAndStaySerial() {
+        let clock = PulseClock()
+        var edges: [(Shortcut, Bool, TimeInterval)] = []
+        let queue = ShortcutPulseQueue(
+            press: { edges.append(($0, true, clock.now)) },
+            release: { edges.append(($0, false, clock.now)) },
+            schedule: clock.schedule
+        )
+
+        queue.enqueue(first)
+        queue.enqueue(second)
+        #expect(edges.isEmpty)
+
+        clock.advance(to: 0)
+        #expect(edges.map(\.0) == [first])
+        clock.advance(to: 0.16)
+        #expect(edges.map(\.0) == [first, first, second, second])
+        #expect(edges.map(\.1) == [true, false, true, false])
+        #expect(edges.map { Int(($0.2 * 1_000).rounded()) } == [0, 50, 75, 125])
+    }
+
+    @Test func cancellationBeforeStartEmitsNothingAndOldCallbackCannotStartNewProvider() {
+        var scheduled: [@MainActor () -> Void] = []
+        var pressed: [Shortcut] = []
+        var released: [Shortcut] = []
+        let queue = ShortcutPulseQueue(
+            press: { pressed.append($0) },
+            release: { released.append($0) },
+            schedule: { _, action in scheduled.append(action) }
+        )
+
+        queue.enqueue(first)
+        queue.cancel()
+        queue.enqueue(second)
+        scheduled.removeFirst()() // The cancelled provider's pending start.
+        #expect(pressed.isEmpty)
+        #expect(released.isEmpty)
+
+        scheduled.removeFirst()()
+        #expect(pressed == [second])
+        queue.cancel()
+        scheduled.removeFirst()() // The cancelled hold must not release again.
+        #expect(pressed == [second])
+        #expect(released == [second])
+    }
+
     @Test func sixteenMillisecondReceiverSeesTheCompleteChordAndRelease() {
         let immediateClock = PulseClock()
         let immediateReceiver = SampledKeyboard(clock: immediateClock)
@@ -134,9 +180,9 @@ import VoiceSwitchCore
         hardware = [(60, .maskShift)]
         clock.advance(to: 0.05)
         #expect(releases.last?.getIntegerValueField(.keyboardEventKeycode) == 60)
-        #expect(releases.last?.flags == .maskShift)
+        #expect(releases.last?.flags.rawValue == 0x20004)
         #expect(releases.first?.type == .keyUp)
-        #expect(releases.first?.flags == [.maskControl, .maskAlternate])
+        #expect(releases.first?.flags.intersection(deviceIndependentFlags) == [.maskControl, .maskAlternate])
     }
 
     @Test func modifierOnlyBindingHasBalancedFlagsAcrossTheHold() {
@@ -146,10 +192,69 @@ import VoiceSwitchCore
         #expect(press.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [59, 58, 56])
         #expect(release.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [56, 58, 59])
         #expect((press + release).allSatisfy { $0.type == .flagsChanged })
-        #expect(press.last?.flags == [.maskControl, .maskAlternate, .maskShift])
+        #expect(press.last?.flags.intersection(deviceIndependentFlags) == [.maskControl, .maskAlternate, .maskShift])
         #expect(release.last?.flags == [])
     }
+
+    @Test func wetypeLeftControlOptionTwoCarriesSideFlagsThroughRelease() {
+        let shortcut = Shortcut(keyCode: 19, key: "2", command: false)
+        let events = FnRouter.makeShortcutEvents(shortcut: shortcut, down: true, physicalModifiers: [])
+            + FnRouter.makeShortcutEvents(shortcut: shortcut, down: false, physicalModifiers: [])
+
+        #expect(events.map(\.type) == [.flagsChanged, .flagsChanged, .keyDown, .keyUp, .flagsChanged, .flagsChanged])
+        #expect(events.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [59, 58, 19, 19, 58, 59])
+        #expect(events.map { $0.flags.rawValue } == [0x40001, 0xc0021, 0xc0021, 0xc0021, 0x40001, 0])
+    }
+
+    @Test func postedWetypeModifiersAreNotRestoredAsPhysicalKeys() {
+        let tag: Int64 = 0x4F4E45464E
+        let shortcut = Shortcut(keyCode: 19, key: "2", command: false)
+        var physical = PhysicalModifierState()
+        let down = FnRouter.makeShortcutEvents(shortcut: shortcut, down: true, physicalModifiers: physical.keys)
+        for event in down {
+            event.setIntegerValueField(.eventSourceUserData, value: tag)
+            physical.observe(event, ignoring: tag)
+        }
+        // The active HID tap exposes these posted Ctrl/Option flags through
+        // CGEventSource state too. They are not new physical presses.
+        #expect(down.last?.flags.rawValue == 0xc0021)
+        #expect(physical.keys.isEmpty)
+        let up = FnRouter.makeShortcutEvents(shortcut: shortcut, down: false, physicalModifiers: physical.keys)
+        #expect(up.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [19, 58, 59])
+        #expect(up.last?.flags == [])
+    }
+
+    @Test func physicalShiftReleaseDuringSyntheticChordDoesNotAdoptItsModifiers() {
+        let tag: Int64 = 0x4F4E45464E
+        var physical = PhysicalModifierState(flags: CGEventFlags(rawValue: 0x20002))
+        let shiftUp = CGEvent(keyboardEventSource: nil, virtualKey: 56, keyDown: false)!
+        shiftUp.type = .flagsChanged
+        shiftUp.flags = CGEventFlags(rawValue: 0xc0021)
+        physical.observe(shiftUp, ignoring: tag)
+        #expect(physical.keys.isEmpty)
+
+        let rightShiftDown = CGEvent(keyboardEventSource: nil, virtualKey: 60, keyDown: true)!
+        rightShiftDown.type = .flagsChanged
+        rightShiftDown.flags = CGEventFlags(rawValue: 0xe0025)
+        physical.observe(rightShiftDown, ignoring: tag)
+        #expect(physical.keys.map(\.0) == [60])
+        let up = FnRouter.makeShortcutEvents(shortcut: first, down: false, physicalModifiers: physical.keys)
+        #expect(up.last?.getIntegerValueField(.keyboardEventKeycode) == 60)
+        #expect(up.last?.flags.rawValue == 0x20004)
+    }
+
+    @Test func releasingLeftShiftKeepsPhysicalRightShiftHeld() {
+        let tag: Int64 = 0x4F4E45464E
+        var physical = PhysicalModifierState(flags: CGEventFlags(rawValue: 0x20006))
+        let leftUp = CGEvent(keyboardEventSource: nil, virtualKey: 56, keyDown: false)!
+        leftUp.type = .flagsChanged
+        leftUp.flags = CGEventFlags(rawValue: 0x20004)
+        physical.observe(leftUp, ignoring: tag)
+        #expect(physical.keys.map(\.0) == [60])
+    }
 }
+
+private let deviceIndependentFlags = CGEventFlags(rawValue: 0xffff0000)
 
 @MainActor private final class PulseClock {
     private(set) var now: TimeInterval = 0
@@ -189,7 +294,7 @@ import VoiceSwitchCore
             let key = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
             if event.type == .keyDown { current.keys.insert(key) }
             if event.type == .keyUp { current.keys.remove(key) }
-            current.flags = event.flags
+            current.flags = event.flags.intersection(deviceIndependentFlags)
             let elapsed = clock.now - lastBroadcast
             if elapsed >= 0.016 {
                 broadcast()

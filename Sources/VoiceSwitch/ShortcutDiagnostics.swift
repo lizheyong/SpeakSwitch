@@ -2,7 +2,7 @@ import ApplicationServices
 import Foundation
 import VoiceSwitchCore
 
-/// A one-second trace of this app's synthetic test shortcut only.
+/// A one-second trace of this app's synthetic shortcut only.
 @MainActor
 final class ShortcutDiagnostics {
     static var logURL: URL {
@@ -15,25 +15,49 @@ final class ShortcutDiagnostics {
     private var observations: [Observation] = []
     private var lines: [String] = []
     private var finished = false
+    private let onModifierEvent: ((CGEvent) -> Void)?
 
-    init(eventTag: Int64, delivery: ShortcutDelivery) {
+    var tracksPhysicalModifiers: Bool {
+        !finished && onModifierEvent != nil && observations.contains { $0.phase == "hid-head" }
+    }
+
+    init(eventTag: Int64, delivery: ShortcutDelivery, observeStream: Bool = true, onModifierEvent: ((CGEvent) -> Void)? = nil) {
         self.eventTag = eventTag
+        self.onModifierEvent = onModifierEvent
         lines.append("Voice Switch shortcut test \(ISO8601DateFormatter().string(from: Date())) delivery=\(delivery.rawValue)")
         lines.append("permissions accessibility=\(AXIsProcessTrusted()) listen=\(CGPreflightListenEventAccess()) post=\(CGPreflightPostEventAccess())")
-        observe("hid-head", location: .cghidEventTap, placement: .headInsertEventTap)
-        observe("session-head", location: .cgSessionEventTap, placement: .headInsertEventTap)
-        observe("session-tail", location: .cgSessionEventTap, placement: .tailAppendEventTap)
+        lines.append("observeStream=\(observeStream)")
+        if observeStream {
+            observe("hid-head", location: .cghidEventTap, placement: .headInsertEventTap)
+            observe("session-head", location: .cgSessionEventTap, placement: .headInsertEventTap)
+            observe("session-tail", location: .cgSessionEventTap, placement: .tailAppendEventTap)
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
             self?.finish(reason: "one-second observation complete")
         }
     }
 
+    func recordNote(_ note: String) {
+        guard !finished else { return }
+        lines.append(note)
+    }
+
     func record(phase: String, event: CGEvent) {
         guard !finished else { return }
+        if phase == "hid-head", event.type == .flagsChanged,
+           event.getIntegerValueField(.eventSourceUserData) != eventTag {
+            onModifierEvent?(event)
+        }
         let elapsed = Double(DispatchTime.now().uptimeNanoseconds - started) / 1_000_000
         if let line = Self.eventLine(phase: phase, event: event, eventTag: eventTag, elapsedMilliseconds: elapsed) {
             lines.append(line)
         }
+    }
+
+    func recordHardwareState(phase: String, flags: CGEventFlags, modifierKeyStates: [CGKeyCode: Bool]) {
+        guard !finished else { return }
+        let keys = modifierKeyStates.keys.sorted().map { "\($0):\(modifierKeyStates[$0] == true ? "down" : "up")" }.joined(separator: ",")
+        lines.append("hid-state phase=\(phase) flags=0x\(String(flags.rawValue, radix: 16)) modifierKeys=\(keys)")
     }
 
     /// Filtering precedes reading keyboard fields, including for the tap callbacks.

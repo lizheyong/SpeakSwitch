@@ -1,4 +1,4 @@
-name: Build macOS app
+name: Build SpeakSwitch macOS app
 
 'on':
   push:
@@ -10,9 +10,15 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
+      - name: Show Swift toolchain
+        run: |
+          xcodebuild -version
+          swift --version
       - name: Test Fn routing
         run: ./scripts/test.sh
       - name: Build Swift package
@@ -22,6 +28,6 @@ jobs:
       - name: Upload app archive
         uses: actions/upload-artifact@v4
         with:
-          name: Voice-Switch-macOS-unsigned
-          path: dist/*.zip
+          name: SpeakSwitch-macOS-unsigned
+          path: dist/SpeakSwitch-*.zip
           if-no-files-found: error

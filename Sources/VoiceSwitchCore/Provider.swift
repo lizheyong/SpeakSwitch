@@ -72,17 +72,27 @@ public struct Provider: Identifiable, Codable, Equatable, Sendable {
         case "typeless":
             return Shortcut(keyCode: 18, key: "1", option: false)
         case "chatterfly":
-            return Shortcut(keyCode: UInt16.max, key: "", control: false, shift: true)
+            return Shortcut(keyCode: UInt16.max, key: "", option: false, shift: true)
+        case "wetype":
+            return Shortcut(keyCode: 19, key: "2", option: false)
         default:
             return Shortcut(keyCode: shortcut.keyCode, key: shortcut.key, option: false, shift: true)
         }
     }
 
+    public mutating func updateUnconfiguredShortcutSuggestion() {
+        guard id == "wetype", !isConfigured,
+              shortcut == Shortcut(keyCode: 21, key: "4") else { return }
+        shortcut = Self.wetypeShortcut
+    }
+
+    private static let wetypeShortcut = Shortcut(keyCode: 19, key: "2", command: false)
+
     public static let catalog: [Provider] = [
         .init(id: "typeless", name: "Typeless", subtitle: "自然表达，流畅成文", symbol: "waveform", tint: "6657D9", website: "https://www.typeless.com/", bundleIDs: ["now.typeless.desktop"], appNames: ["Typeless"], shortcut: .init(keyCode: 18, key: "1", command: false)),
         .init(id: "chatterfly", name: "Chatterfly", subtitle: "不必想好，开口就好", symbol: "sparkles", tint: "D57850", website: "https://chatterfly.tencent.com/", bundleIDs: ["com.tencent.inputmethod.chatterfly"], appNames: ["Chatterfly"], settingsBundleID: "com.tencent.ChatterflyPreference", shortcut: .init(keyCode: UInt16.max, key: "", shift: true, command: false)),
         .init(id: "doubao", name: "豆包输入法", subtitle: "轻声说，也能听得清", symbol: "bubble.left.and.text.bubble.right", tint: "477BD1", website: "https://shurufa.doubao.com/pc", bundleIDs: [], appNames: ["DoubaoIme", "豆包输入法"], shortcut: .init(keyCode: 20, key: "3")),
-        .init(id: "wetype", name: "微信输入法", subtitle: "让表达更自然", symbol: "textformat.abc", tint: "429B6D", website: "https://z.weixin.qq.com/", bundleIDs: [], appNames: ["WeType", "微信输入法"], shortcut: .init(keyCode: 21, key: "4")),
+        .init(id: "wetype", name: "微信输入法", subtitle: "让表达更自然", symbol: "textformat.abc", tint: "429B6D", website: "https://z.weixin.qq.com/", bundleIDs: [], appNames: ["WeType", "微信输入法"], shortcut: wetypeShortcut),
         .init(id: "spokenly", name: "Spokenly", subtitle: "云端模型与本地听写", symbol: "mic", tint: "AD64C1", website: "https://spokenly.app/", bundleIDs: ["app.spokenly"], appNames: ["Spokenly"], shortcut: .init(keyCode: 23, key: "5")),
         .init(id: "shandian", name: "闪电说", subtitle: "随口说，帮你整理好", symbol: "bolt", tint: "B48C36", website: "https://shandianshuo.cn/", bundleIDs: [], appNames: ["闪电说", "Shandianshuo", "ShanDianShuo"], shortcut: .init(keyCode: 22, key: "6"))
     ]

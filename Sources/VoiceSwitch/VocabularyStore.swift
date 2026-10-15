@@ -73,15 +73,15 @@ final class VocabularyStore: ObservableObject {
     }
 
     func exportPlainText() {
-        export(data: Data(VocabularyCodec.exportText(entries).utf8), name: "Voice-Switch-词表.txt", type: .plainText)
+        export(data: Data(VocabularyCodec.exportText(entries).utf8), name: "SpeakSwitch-词表.txt", type: .plainText)
     }
 
     func exportCSV() {
-        export(data: Data(VocabularyCodec.exportCSV(entries).utf8), name: "Voice-Switch-词表.csv", type: .commaSeparatedText)
+        export(data: Data(VocabularyCodec.exportCSV(entries).utf8), name: "SpeakSwitch-词表.csv", type: .commaSeparatedText)
     }
 
     func exportBackup() {
-        do { export(data: try encoded(entries), name: "Voice-Switch-词库备份.json", type: .json) }
+        do { export(data: try encoded(entries), name: "SpeakSwitch-词库备份.json", type: .json) }
         catch { message = "无法备份词库：\(error.localizedDescription)" }
     }
 
@@ -100,7 +100,7 @@ final class VocabularyStore: ObservableObject {
             if let settingsID, let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: settingsID) {
                 NSWorkspace.shared.openApplication(at: app, configuration: .init()) { _, _ in }
             }
-            message = "已准备 \(entries.count) 个词：\(exportURL.lastPathComponent)。在 \(provider.name) 的词库中选择「导入 CSV」并确认预览。备注仅保存在 Voice Switch。"
+            message = "已准备 \(entries.count) 个词：\(exportURL.lastPathComponent)。在 \(provider.name) 的词库中选择「导入 CSV」并确认预览。备注仅保存在声选。"
         } catch { message = "无法准备词表：\(error.localizedDescription)" }
     }
 
