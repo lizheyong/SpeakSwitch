@@ -22,6 +22,8 @@ final class FnRouter {
     private var machine: FnStateMachine?
     private var fnDownEvent: CGEvent?
     private var pressedKeys: Set<CGKeyCode> = []
+    private var delivery: ShortcutDelivery = .hid
+    private var diagnostics: ShortcutDiagnostics?
     private let eventSource = CGEventSource(stateID: .privateState)
     private var physicalFlags: CGEventFlags = []
     private lazy var pulses = ShortcutPulseQueue(
@@ -43,12 +45,15 @@ final class FnRouter {
         }
     }
 
-    func start(shortcut: Shortcut, translation: Shortcut? = nil) throws {
+    func start(shortcut: Shortcut, translation: Shortcut? = nil, delivery: ShortcutDelivery = .hid) throws {
         if isRunning {
-            update(shortcut: shortcut, translation: translation)
+            update(shortcut: shortcut, translation: translation, delivery: delivery)
             return
         }
         guard AXIsProcessTrusted() else { throw RouterError.accessibility }
+        pulses.cancel()
+        diagnostics?.finish(reason: "routing started")
+        self.delivery = delivery
         let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
             | CGEventMask(1 << CGEventType.keyDown.rawValue)
             | CGEventMask(1 << CGEventType.keyUp.rawValue)
@@ -87,8 +92,10 @@ final class FnRouter {
         }
     }
 
-    func update(shortcut: Shortcut, translation: Shortcut? = nil) {
+    func update(shortcut: Shortcut, translation: Shortcut? = nil, delivery: ShortcutDelivery = .hid) {
         pulses.cancel()
+        diagnostics?.finish(reason: "binding updated")
+        self.delivery = delivery
         guard var machine else { return }
         let effects = machine.update(shortcut: shortcut, translation: translation)
         self.machine = machine
@@ -97,6 +104,7 @@ final class FnRouter {
 
     func stop() {
         pulses.cancel()
+        diagnostics?.finish(reason: "routing stopped")
         permissionTimer?.invalidate()
         permissionTimer = nil
         if var machine {
@@ -117,12 +125,20 @@ final class FnRouter {
     }
 
     /// Sends a balanced test gesture. It does not activate or configure an app.
-    func test(shortcut: Shortcut) {
-        guard AXIsProcessTrusted() else {
+    @discardableResult
+    func test(shortcut: Shortcut, delivery: ShortcutDelivery = .hid) -> Bool {
+        pulses.cancel()
+        diagnostics?.finish(reason: "next test")
+        self.delivery = delivery
+        let diagnostics = ShortcutDiagnostics(eventTag: eventTag, delivery: delivery)
+        self.diagnostics = diagnostics
+        guard AXIsProcessTrusted(), CGPreflightPostEventAccess() else {
             onFailure?(RouterError.accessibility.localizedDescription)
-            return
+            diagnostics.finish(reason: "posting permission unavailable")
+            return false
         }
         pulses.enqueue(shortcut)
+        return true
     }
 
     private func receive(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
@@ -225,7 +241,8 @@ final class FnRouter {
         for event in events {
             event.timestamp = DispatchTime.now().uptimeNanoseconds
             event.setIntegerValueField(.eventSourceUserData, value: eventTag)
-            event.post(tap: .cghidEventTap)
+            diagnostics?.record(phase: down ? "post-down" : "post-up", event: event)
+            event.post(tap: delivery == .hid ? .cghidEventTap : .cgSessionEventTap)
         }
     }
 

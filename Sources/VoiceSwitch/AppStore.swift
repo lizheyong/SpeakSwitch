@@ -97,7 +97,7 @@ final class AppStore: ObservableObject {
         }
         cancelShortcutTest()
         selectedID = provider.id
-        router.update(shortcut: provider.shortcut, translation: provider.translationShortcut)
+        router.update(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery)
         let saved = persist()
         launch(provider)
         if isEnabled { isListening = router.isRunning }
@@ -129,7 +129,7 @@ final class AppStore: ObservableObject {
             return
         }
         do {
-            try router.start(shortcut: provider.shortcut, translation: provider.translationShortcut)
+            try router.start(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery)
             isEnabled = true; isListening = router.isRunning
             wantsEnabled = true
             let saved = persist()
@@ -162,7 +162,7 @@ final class AppStore: ObservableObject {
         cancelShortcutTest()
         providers[index] = provider
         if selectedID == provider.id {
-            if provider.isConfigured { router.update(shortcut: provider.shortcut, translation: provider.translationShortcut) }
+            if provider.isConfigured { router.update(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery) }
             else { setEnabled(false) }
         }
         guard persist() else { refresh(); return false }
@@ -273,8 +273,9 @@ final class AppStore: ObservableObject {
             } catch { return }
             guard let self else { return }
             self.shortcutTestTask = nil
-            self.router.test(shortcut: provider.shortcut)
-            self.message = "已发送快捷键。确认原应用是否响应；如开始了录音，请在原应用中结束。"
+            if self.router.test(shortcut: provider.shortcut, delivery: provider.shortcutDelivery) {
+                self.message = "已请求发送快捷键。请查看原应用是否响应；如开始了录音，请在原应用中结束。"
+            }
         }
     }
 

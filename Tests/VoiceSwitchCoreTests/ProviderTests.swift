@@ -46,7 +46,22 @@ import Foundation
         var provider = Provider.catalog[0]
         provider.translationShortcut = .init(keyCode: 18, key: "1", option: false, shift: true)
         provider.note = "本月余量在原应用查看"
+        provider.delivery = .session
         let decoded = try JSONDecoder().decode(Provider.self, from: JSONEncoder().encode(provider))
         #expect(decoded == provider)
+    }
+
+    @Test func existingConfigurationUsesProviderDeliveryWithoutChangingShortcuts() throws {
+        let original = Provider.catalog[0]
+        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as? [String: Any])
+        json.removeValue(forKey: "delivery")
+        let restored = try JSONDecoder().decode(Provider.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(restored.shortcut == original.shortcut)
+        #expect(restored.shortcutDelivery == .session)
+        #expect(Provider.catalog.first { $0.id == "chatterfly" }?.shortcutDelivery == .hid)
+
+        var override = restored
+        override.delivery = .hid
+        #expect(override.shortcutDelivery == .hid)
     }
 }

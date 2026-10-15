@@ -1,5 +1,10 @@
 import Foundation
 
+public enum ShortcutDelivery: String, Codable, Sendable {
+    case hid
+    case session
+}
+
 public struct Shortcut: Codable, Equatable, Sendable {
     public var keyCode: UInt16
     public var key: String
@@ -44,16 +49,22 @@ public struct Provider: Identifiable, Codable, Equatable, Sendable {
     public var settingsBundleID: String?
     public var shortcut: Shortcut
     public var translationShortcut: Shortcut?
+    public var delivery: ShortcutDelivery?
     public var isConfigured: Bool
     public var isCustom: Bool
     public var note: String
 
-    public init(id: String, name: String, subtitle: String, symbol: String, tint: String, website: String, bundleIDs: [String], appNames: [String], appPath: String? = nil, settingsBundleID: String? = nil, shortcut: Shortcut, translationShortcut: Shortcut? = nil, isConfigured: Bool = false, isCustom: Bool = false, note: String = "") {
+    public init(id: String, name: String, subtitle: String, symbol: String, tint: String, website: String, bundleIDs: [String], appNames: [String], appPath: String? = nil, settingsBundleID: String? = nil, shortcut: Shortcut, translationShortcut: Shortcut? = nil, delivery: ShortcutDelivery? = nil, isConfigured: Bool = false, isCustom: Bool = false, note: String = "") {
         self.id = id; self.name = name; self.subtitle = subtitle; self.symbol = symbol
         self.tint = tint; self.website = website; self.bundleIDs = bundleIDs
         self.appNames = appNames; self.appPath = appPath; self.settingsBundleID = settingsBundleID
         self.shortcut = shortcut; self.translationShortcut = translationShortcut
+        self.delivery = delivery
         self.isConfigured = isConfigured; self.isCustom = isCustom; self.note = note
+    }
+
+    public var shortcutDelivery: ShortcutDelivery {
+        delivery ?? (id == "typeless" ? .session : .hid)
     }
 
     public var suggestedTranslationShortcut: Shortcut {
