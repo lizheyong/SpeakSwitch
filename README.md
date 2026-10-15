@@ -23,6 +23,8 @@ Fn + Shift 松开  → 当前应用的翻译快捷键     → 原应用执行翻
 
 Voice Switch 使用原生 SwiftUI、AppKit 和 Core Graphics，无第三方依赖。内置 Typeless、Chatterfly、豆包输入法、微信输入法、Spokenly、闪电说的接入模板，也可以选择自己的 `.app` 添加工具。模板表示预置名称、查找位置和快捷键建议，具体兼容状态见 [兼容性记录](docs/COMPATIBILITY.md)。
 
+界面采用暖白与浅米灰表面、宋体标题和开放式列表。输入法优先显示本机应用的真实图标，未安装时使用离线打包的官方品牌图标；来源与权利归属见 [图标说明](docs/ASSETS.md)。
+
 ## 构建与安装
 
 应用支持 macOS 13 或更新版本。编译需要 Xcode 或 Command Line Tools；测试使用 Swift Testing，需要 Swift 6 和 macOS 14 或更新版本。

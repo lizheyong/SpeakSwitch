@@ -7,7 +7,11 @@ let package = Package(
     products: [.executable(name: "VoiceSwitch", targets: ["VoiceSwitch"])],
     targets: [
         .target(name: "VoiceSwitchCore"),
-        .executableTarget(name: "VoiceSwitch", dependencies: ["VoiceSwitchCore"]),
+        .executableTarget(
+            name: "VoiceSwitch",
+            dependencies: ["VoiceSwitchCore"],
+            resources: [.copy("Resources/ProviderIcons")]
+        ),
         .testTarget(name: "VoiceSwitchCoreTests", dependencies: ["VoiceSwitchCore"]),
         .testTarget(name: "VoiceSwitchTests", dependencies: ["VoiceSwitch", "VoiceSwitchCore"])
     ]

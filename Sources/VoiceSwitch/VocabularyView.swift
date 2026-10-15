@@ -21,7 +21,7 @@ struct VocabularyView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 28) {
             header
             introduction
             addForm
@@ -38,10 +38,9 @@ struct VocabularyView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 9) {
                 Text("共享词库")
-                    .font(.system(size: 25, weight: .semibold))
-                    .tracking(-0.7)
+                    .font(Palette.headingFont(30))
                 Text("名字、术语、习惯用词，都收在同一份词库。")
-                    .font(.system(size: 11))
+                    .font(.system(size: 13))
                     .foregroundStyle(Palette.secondary)
             }
             Spacer(minLength: 0)
@@ -51,32 +50,31 @@ struct VocabularyView: View {
     }
 
     private var introduction: some View {
-        HStack(alignment: .center, spacing: 20) {
+        HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 9) {
                 Text("你的表达，自有词汇。")
-                    .font(.system(size: 20, weight: .semibold))
-                    .tracking(-0.6)
+                    .font(Palette.headingFont(23))
                 Text("在这里维护本机主词库，导入已有词表，或带到支持词表导入的语音应用。")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Palette.dark.opacity(0.68))
+                    .font(.system(size: 13))
+                    .foregroundStyle(Palette.secondary)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 5)
             VStack(alignment: .trailing, spacing: 4) {
                 Text("\(store.count)")
-                    .font(.system(size: 38, weight: .light, design: .rounded))
+                    .font(.system(size: 36, weight: .light, design: .serif))
+                    .foregroundStyle(Palette.accentText)
                     .monospacedDigit()
                 Text("个词条")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Palette.dark.opacity(0.62))
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.secondary)
             }
             .accessibilityElement(children: .combine)
         }
-        .padding(.horizontal, 25)
-        .padding(.vertical, 22)
-        .background(Palette.mint.opacity(0.63))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.vertical, 18)
+        .overlay(alignment: .top) { Rectangle().fill(Palette.line).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Palette.line).frame(height: 1) }
     }
 
     private var addForm: some View {
@@ -85,15 +83,15 @@ struct VocabularyView: View {
                 .font(.system(size: 13, weight: .semibold))
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("词语").font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                    Text("词语").font(.system(size: 12)).foregroundStyle(Palette.secondary)
                     TextField("例如：灵境、Voice Switch", text: $term)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .focused($termFocused)
                         .onSubmit(addEntry)
                         .padding(.horizontal, 11)
-                        .frame(height: 34)
-                        .background(.white)
+                        .frame(height: 36)
+                        .background(Palette.surface)
                         .clipShape(RoundedRectangle(cornerRadius: 7))
                         .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
                 }
@@ -102,13 +100,13 @@ struct VocabularyView: View {
                 Button(action: addEntry) {
                     Label("添加", systemImage: "plus")
                 }
-                .buttonStyle(VocabularyPrimaryStyle())
+                .buttonStyle(SolidButtonStyle())
                 .disabled(term.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .padding(.top, 22)
             }
             if let message = store.message, !message.isEmpty {
                 Label(message, systemImage: "info.circle")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -121,28 +119,28 @@ struct VocabularyView: View {
                 Text("我的词条").font(.system(size: 13, weight: .semibold))
                 if !search.isEmpty {
                     Text("\(filteredEntries.count) 个结果")
-                        .font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                        .font(.system(size: 12)).foregroundStyle(Palette.secondary)
                 }
                 Spacer()
                 HStack(spacing: 7) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(Palette.secondary)
                     TextField("搜索词语或备注", text: $search)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                     if !search.isEmpty {
                         Button { search = "" } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 11)).foregroundStyle(Palette.secondary)
+                                .font(.system(size: 12)).foregroundStyle(Palette.secondary)
                         }
                         .buttonStyle(.plain)
                         .help("清空搜索")
                     }
                 }
                 .padding(.horizontal, 11)
-                .frame(width: 190, height: 31)
-                .background(.white.opacity(0.7))
+                .frame(width: 205, height: 34)
+                .background(Palette.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
             }
@@ -156,7 +154,7 @@ struct VocabularyView: View {
                             .font(.system(size: 13, weight: .medium))
                         Button("查看全部词条") { search = "" }
                             .buttonStyle(.plain)
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(Palette.secondary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 135)
@@ -166,7 +164,7 @@ struct VocabularyView: View {
                         Spacer()
                         Text("点击词条编辑")
                     }
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Palette.secondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 11)
@@ -183,9 +181,7 @@ struct VocabularyView: View {
                     }
                 }
             }
-            .background(.white.opacity(0.66))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Palette.line, lineWidth: 1))
+            .overlay(alignment: .bottom) { Rectangle().fill(Palette.line).frame(height: 1) }
 
             if let removedEntry {
                 HStack(spacing: 8) {
@@ -199,7 +195,7 @@ struct VocabularyView: View {
                     .fontWeight(.medium)
                     Spacer()
                 }
-                .font(.system(size: 10))
+                .font(.system(size: 12))
             }
         }
     }
@@ -212,11 +208,11 @@ struct VocabularyView: View {
             Text("从一个经常被听错的词开始")
                 .font(.system(size: 13, weight: .medium))
             Text("人名、品牌、项目名、专业术语，都可以加入。")
-                .font(.system(size: 10))
+                .font(.system(size: 12))
                 .foregroundStyle(Palette.secondary)
             Button("导入已有词表", action: store.importFile)
                 .buttonStyle(.plain)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .padding(.top, 2)
         }
         .padding(.vertical, 30)
@@ -233,39 +229,44 @@ struct VocabularyView: View {
                 Text("把词库带到输入法")
                     .font(.system(size: 12, weight: .semibold))
                 Text("准备文件后，在原应用的词库中选择“导入 CSV”。导入前可预览，确认后由原应用保存。")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(Palette.secondary)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 9) {
                     ForEach(Provider.catalog.filter { $0.id == "typeless" || $0.id == "chatterfly" }) { provider in
-                        Button("\(provider.name) · 准备导入") {
+                        Button {
                             store.prepareImport(for: provider)
+                        } label: {
+                            HStack(spacing: 8) {
+                                ProviderIcon(provider: provider, size: 22)
+                                Text("\(provider.name) · 准备导入")
+                            }
                         }
-                        .buttonStyle(VocabularyOutlineStyle())
+                        .buttonStyle(OutlineButtonStyle())
                         .disabled(store.entries.isEmpty)
                     }
                 }
                 .padding(.top, 3)
                 Text("CSV 包含词语；JSON 备份同时保留备注。纠错替换规则在原应用中管理。")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(17)
-        .background(Palette.line.opacity(0.36))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 18)
+        .overlay(alignment: .top) { Rectangle().fill(Palette.line).frame(height: 1) }
     }
 
     private var fileFooter: some View {
         HStack(spacing: 6) {
-            Image(systemName: "internaldrive").font(.system(size: 10))
+            Image(systemName: "internaldrive").font(.system(size: 12))
             Text("主词库保存在这台 Mac 上")
             Spacer()
             Button("查看词库文件", action: store.revealFile).buttonStyle(.plain)
         }
-        .font(.system(size: 10))
+        .font(.system(size: 12))
         .foregroundStyle(Palette.secondary)
     }
 
@@ -277,13 +278,13 @@ struct VocabularyView: View {
             Button("导出 JSON · 完整词库备份", action: store.exportBackup)
         } label: {
             Label("导出词表", systemImage: "square.and.arrow.up")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
         .padding(.horizontal, 12)
-        .frame(height: 33)
-        .background(.white.opacity(0.7))
+        .frame(height: 34)
+        .background(Palette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
         .disabled(store.entries.isEmpty)
@@ -294,26 +295,26 @@ struct VocabularyView: View {
             Button("从文件导入…", action: store.importFile)
         } label: {
             Label("导入", systemImage: "square.and.arrow.down")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
         .padding(.horizontal, 12)
-        .frame(height: 33)
-        .background(.white.opacity(0.7))
+        .frame(height: 34)
+        .background(Palette.surface)
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
     }
 
     private func entryField(_ title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: 10)).foregroundStyle(Palette.secondary)
+            Text(title).font(.system(size: 12)).foregroundStyle(Palette.secondary)
             TextField(placeholder, text: text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .padding(.horizontal, 11)
-                .frame(height: 34)
-                .background(.white)
+                .frame(height: 36)
+                .background(Palette.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
         }
@@ -329,7 +330,7 @@ struct VocabularyView: View {
                         .help(entry.term)
                     if !entry.note.isEmpty {
                         Text(entry.note)
-                            .font(.system(size: 10))
+                            .font(.system(size: 12))
                             .foregroundStyle(Palette.secondary)
                             .lineLimit(2)
                     }
@@ -340,7 +341,7 @@ struct VocabularyView: View {
             .buttonStyle(.plain)
 
             Button { editingEntry = entry } label: {
-                Image(systemName: "pencil").font(.system(size: 11)).frame(width: 24, height: 28)
+                Image(systemName: "pencil").font(.system(size: 12)).frame(width: 24, height: 28)
             }
             .buttonStyle(.plain)
             .foregroundStyle(Palette.secondary)
@@ -349,7 +350,7 @@ struct VocabularyView: View {
             Button {
                 if store.remove(entry) { removedEntry = entry }
             } label: {
-                Image(systemName: "trash").font(.system(size: 11)).frame(width: 24, height: 28)
+                Image(systemName: "trash").font(.system(size: 12)).frame(width: 24, height: 28)
             }
             .buttonStyle(.plain)
             .foregroundStyle(Palette.secondary)
@@ -383,44 +384,44 @@ private struct VocabularyEditView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 21) {
             VStack(alignment: .leading, spacing: 7) {
-                Text("编辑词条").font(.system(size: 21, weight: .semibold))
+                Text("编辑词条").font(Palette.headingFont(26))
                 Text("让常用词保持准确，备注保留给自己。")
-                    .font(.system(size: 11)).foregroundStyle(Palette.secondary)
+                    .font(.system(size: 12)).foregroundStyle(Palette.secondary)
             }
 
             VStack(alignment: .leading, spacing: 9) {
-                Text("词语").font(.system(size: 11, weight: .medium))
+                Text("词语").font(.system(size: 12, weight: .medium))
                 TextField("词语", text: $draft.term)
                     .textFieldStyle(.plain)
                     .padding(11)
-                    .background(.white)
+                    .background(Palette.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 7))
                     .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
             }
 
             VStack(alignment: .leading, spacing: 9) {
-                Text("备注 · 可选").font(.system(size: 11, weight: .medium))
+                Text("备注 · 可选").font(.system(size: 12, weight: .medium))
                 TextField("读音、含义或使用场景", text: $draft.note)
                     .textFieldStyle(.plain)
                     .padding(11)
-                    .background(.white)
+                    .background(Palette.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 7))
                     .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
             }
 
             if attemptedSave, let message = store.message {
-                Text(message).font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                Text(message).font(.system(size: 12)).foregroundStyle(Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack {
                 Spacer()
-                Button("取消") { dismiss() }.buttonStyle(VocabularyOutlineStyle())
+                Button("取消") { dismiss() }.buttonStyle(OutlineButtonStyle())
                 Button("保存") {
                     attemptedSave = true
                     if store.update(draft) { dismiss() }
                 }
-                .buttonStyle(VocabularyPrimaryStyle())
+                .buttonStyle(SolidButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(draft.term.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -430,32 +431,5 @@ private struct VocabularyEditView: View {
         .frame(width: 440)
         .foregroundStyle(Palette.ink)
         .background(Palette.paper)
-    }
-}
-
-private struct VocabularyOutlineStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11, weight: .medium))
-            .padding(.horizontal, 12)
-            .frame(height: 33)
-            .foregroundStyle(Palette.ink)
-            .background(configuration.isPressed ? Palette.line : .white.opacity(0.7))
-            .clipShape(RoundedRectangle(cornerRadius: 7))
-            .overlay(RoundedRectangle(cornerRadius: 7).stroke(Palette.line, lineWidth: 1))
-    }
-}
-
-private struct VocabularyPrimaryStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var enabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11, weight: .medium))
-            .padding(.horizontal, 15)
-            .frame(height: 34)
-            .foregroundStyle(.white)
-            .background(Palette.dark.opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.3))
-            .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 }
