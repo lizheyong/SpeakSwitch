@@ -4,7 +4,7 @@ import VoiceSwitchCore
 
 private typealias ViewState<Value> = SwiftUI.State<Value>
 
-private enum Palette {
+enum Palette {
     static let paper = Color(hex: "F7F8F2")
     static let ink = Color(hex: "23332D")
     static let secondary = Color(hex: "7A847B")
@@ -15,12 +15,14 @@ private enum Palette {
 
 private enum Destination: String, CaseIterable {
     case providers = "我的输入法"
+    case vocabulary = "共享词库"
     case guide = "接入指南"
     case settings = "设置"
 
     var symbol: String {
         switch self {
         case .providers: return "waveform"
+        case .vocabulary: return "text.book.closed"
         case .guide: return "book.closed"
         case .settings: return "slider.horizontal.3"
         }
@@ -41,6 +43,7 @@ struct MainContentView: View {
                     VStack(alignment: .leading, spacing: 27) {
                         switch destination {
                         case .providers: providersPage
+                        case .vocabulary: VocabularyView(store: store.vocabulary)
                         case .guide: guidePage
                         case .settings: settingsPage
                         }

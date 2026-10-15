@@ -30,6 +30,26 @@ Voice Switch 把 Fn 的一次按下与松开，转发为当前应用的语音输
 
 Voice Switch 转发快捷键，翻译目标语言、模式和结果由原应用管理。
 
+## 共享词库兼容性
+
+共享词库保存标准写法和备注。TXT 与 CSV 只导出标准写法；JSON 备份保留备注。提供给输入法的 CSV 使用 UTF-8、单列、无表头，每行一个词。含逗号或引号的词按 CSV 规则引用。
+
+| 应用 | 已确认的词库入口或格式 | Voice Switch 当前对接 |
+| --- | --- | --- |
+| Typeless | [官方说明](https://www.typeless.com/help/quickstart/history-and-dictionary)提供 Dictionary → New word → Import CSV；本机 2.8.1 界面文案要求单列、每行一个词，文件最大 5 MB | 生成单列 CSV、在 Finder 定位文件并打开应用，由用户在词库中完成导入 |
+| Chatterfly | 本机 1.0.7.13415 的个人词库 → 添加新词包含「导入 CSV」；应用文案要求单列、每行一个词，包含导入预览 | 生成单列 CSV、定位文件并打开设置，由用户在词库中完成导入；不支持直接读取其本机数据库词条 |
+| Spokenly | [Dictionary](https://spokenly.app/docs/custom-dictionary)按识别模型设置；ElevenLabs Scribe 的 Keyterms 使用逗号分隔，实时识别应用前 50 个词 | 导出词表供用户按模型要求填写；当前没有自动写入模型设置 |
+| 闪电说 | [官方指南](https://shandianshuo.cn/docs)支持将人名、产品名和术语的标准写法加入词典；尚未核实批量导入格式 | 可导出通用词表，按当前版本词典界面添加 |
+| 豆包输入法、微信输入法、自定义应用 | 尚未核实当前版本的词库导入格式 | 可导出通用词表，先确认原应用接受的格式 |
+
+「准备导入」表示文件已生成。词库是否被接受、是否超出容量，以及最终导入数量，以原应用的预览和结果为准。当前没有后台双向同步；主词库的编辑、删除不会自动改变原应用已有词条。Voice Switch 不写入第三方应用的私有词库数据库。
+
+2026-10-15 本机验收：将 Voice Switch 生成的 CSV 交给 Chatterfly 1.0.7.13415，原生预览显示「共扫描到 6 条词汇，其中有效词汇 1 条」，并正确显示新增词语 `Voice Switch`。其他 5 条已存在于原词库。测试在预览阶段取消，未重复写入已有词条。
+
+本机 Chatterfly 1.0.7.13415 的 `ybdict.sqlite` 中，`ybdict_terms.text` 保存的是编码或加密后的表示，与词库界面显示的明文不一致。行数一致只能证明存在记录，不能证明词条内容可用。当前没有可用的明文读取适配，Voice Switch 不直接导入该数据库。已有词条需要通过兼容的词表文件导入，或在共享词库中手动维护；CSV 导入 Chatterfly 的入口与格式已单独确认。
+
+标准词汇与纠错替换是两类设置。Spokenly 的 [Word Replacements](https://spokenly.app/docs/word-replacements)需要「原文本 → 替换文本」，并提供 [官方 CLI](https://spokenly.app/docs/macos/cli)和 JSON 备份；单独一个标准词不能自动推导出正确的替换规则。Voice Switch 当前仅管理标准词汇，备注不会作为替换规则发送。
+
 ## 本机确认的应用身份
 
 | 应用 | 路径 | Bundle ID |

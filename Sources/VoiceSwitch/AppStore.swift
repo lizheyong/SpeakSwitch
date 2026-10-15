@@ -6,6 +6,7 @@ import VoiceSwitchCore
 
 @MainActor
 final class AppStore: ObservableObject {
+    let vocabulary = VocabularyStore()
     @Published var providers: [Provider] = Provider.catalog
     @Published var selectedID: String?
     @Published var isEnabled = false

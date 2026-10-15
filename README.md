@@ -69,20 +69,40 @@ Fn + Delete 等其他组合键交给系统处理。关闭 One Fn 后，原应用
 
 切换应用前先结束当前录音。各语音应用的录音状态接口不同，Voice Switch 当前仅管理按键路由；界面的按键指示表示 Fn 按下，录音是否进行以原应用为准。
 
+## 共享词库
+
+在「共享词库」维护一份本机主词库，保存常用词和可选备注。可以搜索、编辑、删除词条，也可以导入已有词表。重复词合并时保留本机已有内容。
+
+已有词条可以通过 TXT、单列 CSV 或 Voice Switch 的 JSON 备份导入。Chatterfly 1.0.7.13415 的本机数据库保存的是编码或加密后的词条表示，不能直接将 SQLite 字段作为明文词语读取。当前请使用已有的兼容词表文件，或在共享词库中维护标准写法，再通过 CSV 交给原应用。
+
+| 格式 | 用途 |
+| --- | --- |
+| TXT | 每行一个词，导入和导出通用词表 |
+| CSV | 无表头、单列、每行一个词，导入和导出词表 |
+| JSON | Voice Switch 完整备份格式，保留词条与备注，可重新导入 |
+
+Typeless 和 Chatterfly 提供「准备导入」按钮：Voice Switch 生成兼容的单列 CSV，在 Finder 中定位文件，并打开对应应用或设置。随后在原应用的词库中选择「导入 CSV」，检查预览并确认。Typeless 的入口是 Dictionary → New word → Import CSV；Chatterfly 的入口是个人词库 → 添加新词 → 导入 CSV。
+
+共享词库的修改需要再次导入到原应用。当前没有后台双向同步，Voice Switch 中删除词条也不会删除原应用的词条。备注保留在本机主词库和 JSON 备份中；语音应用的纠错替换规则由原应用管理。其他应用可使用导出的词表，具体格式与能力见 [词库兼容性](docs/COMPATIBILITY.md#共享词库兼容性)。
+
 ## 当前验证范围
 
 已检查本机 Typeless 2.8.1 与 Chatterfly 1.0.7.13415 的应用身份，确认 Chatterfly 的快捷键设置入口，并核对部分厂商的语音和翻译文档。辅助功能、输入监控授权后的 Fn → 录音 → 上屏，以及 Fn + Shift 翻译链路尚未完成本机验收。
 
-18 项测试覆盖 Fn / Shift + Fn、普通组合键透传、切换时取消手势、监听中断、快捷键冲突与配置序列化，均已通过。原生事件构造检查覆盖左右 Shift 恢复、纯修饰键及 Caps Lock。已完成 arm64 应用构建、ad-hoc 签名校验及主界面运行检查。
+30 项测试通过，覆盖 Fn / Shift + Fn、普通组合键透传、切换时取消手势、监听中断、快捷键冲突与配置序列化，以及词表格式、去重和备份合并身份。原生事件构造检查覆盖左右 Shift 恢复、纯修饰键及 Caps Lock。已完成 arm64 应用构建、ad-hoc 签名校验及主界面运行检查。
+
+共享词库已完成文件导入、持久化与重载检查。Chatterfly 的真实导入预览成功扫描生成的 6 条词汇，去重后正确显示 1 条新增词汇；测试停在预览阶段。词库读取失败后的原文件保留，以及 JSON 备份合并后的词条身份，也已验证。
 
 这些检查不能证明第三方应用会接收合成快捷键，也不能证明录音、翻译及文字上屏成功。界面中的当前选择表示按键路由目标。
 
 ## 数据与权限
 
-Voice Switch 在本机处理快捷键事件，不录音，不保存键入内容，不调用网络服务。它保存应用列表、快捷键、当前选择和备注，位置是：
+Voice Switch 在本机处理快捷键事件，不录音，不记录键入内容，不调用网络服务。应用配置、主动添加或导入的词条，以及准备交给原应用的词表，保存在：
 
 ```text
 ~/Library/Application Support/Voice Switch/configuration.json
+~/Library/Application Support/Voice Switch/vocabulary.json
+~/Library/Application Support/Voice Switch/Exports/
 ```
 
 「辅助功能」用于转发快捷键，「输入监控」用于识别 Fn 与组合键。语音应用自行管理麦克风权限、语音数据和网络请求；点击官网入口会通过浏览器打开对应网站。
@@ -92,6 +112,8 @@ Voice Switch 在本机处理快捷键事件，不录音，不保存键入内容�
 Voice Switch is a native macOS menu bar app that routes **one Fn key** to the selected dictation app. Tap Fn to start and tap again to stop; Fn + Shift triggers the app's separately configured translation shortcut. Apps stay running, so switching only changes the routing target.
 
 One-time setup: grant Accessibility and Input Monitoring, remove **all native Fn bindings** from every running dictation app, assign unique internal shortcuts, and test each integration. Configure toggle mode where the app offers it. Chatterfly uses a modifier-only combination of up to three keys. Translation requires an actual translation action in the target app.
+
+The shared vocabulary keeps terms and notes locally. Import or export TXT and headerless single-column CSV, or use JSON for a complete backup. Chatterfly's local dictionary stores encoded or encrypted values, so direct database import is unavailable. The Typeless and Chatterfly handoff prepares a CSV file and opens the vendor app; complete the import in its dictionary UI. Changes are applied manually, without background two-way synchronization.
 
 Requires macOS 13+. Build with `./scripts/build-app.sh`, or add `--install` to install into `~/Applications`. Source supports native Apple Silicon and Intel builds; the current local build is arm64. Builds are not Developer ID signed or notarized. See [compatibility notes](docs/COMPATIBILITY.md) for evidence and testing limits.
 
