@@ -17,12 +17,13 @@ struct OnboardingView: View {
     @OnboardingState private var showActionMessage = false
 
     private enum Step: Int, CaseIterable {
-        case choose, permissions, shortcut, trial
+        case choose, permissions, conflicts, shortcut, trial
 
         var title: String {
             switch self {
             case .choose: return "选择输入法"
             case .permissions: return "允许系统权限"
+            case .conflicts: return "检查 Fn 占用"
             case .shortcut: return "设置快捷键"
             case .trial: return "试用 Fn"
             }
@@ -42,6 +43,7 @@ struct OnboardingView: View {
         switch currentStep {
         case .choose: return provider != nil
         case .permissions: return provider != nil && permissionsReady
+        case .conflicts: return provider != nil
         case .shortcut: return provider?.isConfigured == true && permissionsReady
         case .trial: return trialReady && trialConfirmed
         }
@@ -71,6 +73,7 @@ struct OnboardingView: View {
                     switch currentStep {
                     case .choose: chooseStep
                     case .permissions: permissionsStep
+                    case .conflicts: FnPreflightSections(store: store)
                     case .shortcut: shortcutStep
                     case .trial: trialStep
                     }
@@ -117,6 +120,7 @@ struct OnboardingView: View {
         }
         .onAppear {
             store.refresh()
+            store.refreshFnChecks()
             if providerID.isEmpty {
                 providerID = installedProviders.first(where: { $0.id == store.selectedID })?.id
                     ?? installedProviders.first?.id ?? ""
@@ -125,6 +129,7 @@ struct OnboardingView: View {
         .onDisappear { practiceText = "" }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             store.refresh()
+            store.refreshFnChecks()
         }
         .onChange(of: providerID) { _ in resetTrial() }
         .onChange(of: provider?.shortcut) { _ in resetTrial() }

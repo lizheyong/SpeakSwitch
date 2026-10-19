@@ -12,7 +12,7 @@
 
 ## 能做什么
 
-- **One Fn**：点按开始，再按结束。点击菜单栏切换输入法，或用 `⌃⌥⌘Space` 循环选择。应用保持驻留，切换时更新快捷键的发送目标。
+- **One Fn**：点按开始，再按结束。点击菜单栏切换输入法，或用 `⌃⌥⌘Space` 循环选择。快捷切换只经过正在运行且勾选「参与快捷切换」的应用，已退出的应用自动跳过。
 - **共享词表**：在本机维护常用词和备注，导入、导出 TXT / CSV，并用 JSON 备份；为支持导入的应用准备词表。
 - **本机统计**：按输入法查看启动次数、估算使用时长和听写／翻译分布，了解自己更常用哪一款。
 - **原生 Mac 体验**：系统菜单、分栏表单、深浅色外观、真实应用图标和切换提示；支持添加自己的 `.app`。
@@ -22,6 +22,8 @@
 | `Fn` | 点按开始语音输入，再按一次结束 |
 | `Shift + Fn` | 触发当前应用已接入的翻译动作 |
 | `Control + Option + Command + Space` | 切换到下一个已接入的应用 |
+
+输入法列表显示「运行中 / 未启动」，每个已接入应用都有「参与快捷切换」开关。关闭该开关后，即使应用仍在运行也不会进入循环。只有主动点击「启动并使用」才会打开未启动的应用；仅关闭窗口的应用可能仍在后台运行。全部退出或全部排除时，快捷切换保持当前选择并显示提示。
 
 切换输入法前先结束当前录音。声选转发快捷键，录音状态和上屏结果以原应用为准。翻译需要原应用提供对应功能；Typeless 用 `Shift + Fn` 开始、单独按 `Fn` 结束。
 
@@ -35,12 +37,17 @@
 
 **此版本未使用 Developer ID 签名，也未经过 Apple 公证。** 只在信任源码及下载来源后运行。若 macOS 阻止打开，先尝试启动应用，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」；具体操作见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。也可以自行审核源码并构建。
 
-## 四步上手
+## 五步上手
 
 1. **选择输入法**：助手检测已安装的应用，也支持手动添加 `.app`。原应用先完成自身登录、麦克风及文字输入权限设置。
 2. **允许系统权限**：给声选开启「辅助功能」和「输入监控」。部分 macOS 将辅助功能显示为「设备控制和数据访问」。返回后状态会刷新；按系统要求重开声选后，可以继续助手进度。声选不需要麦克风权限。
-3. **设置专属快捷键**：按应用内教程，把同一组组合键分别设置到原应用和声选，释放所有原生 Fn 绑定，再点击「保存并选用」。
-4. **亲自试用 Fn**：在助手的练习区或常用输入框中，点按 Fn 开始、再按 Fn 结束。确认文字上屏后勾选结果并完成。
+3. **检查 Fn 占用**：助手检查已安装的语音应用和飞书 / Lark，显示具体 Fn 绑定或待检查项。逐项释放 Fn 后继续；原应用更新后，手动确认项会重新提示检查。
+4. **设置专属快捷键**：按应用内教程，把同一组组合键分别设置到原应用和声选，释放所有原生 Fn 绑定，再点击「保存并选用」。
+5. **亲自试用 Fn**：在助手的练习区或常用输入框中，点按 Fn 开始、再按 Fn 结束。确认文字上屏后勾选结果并完成。
+
+Typeless、网易叭哥说支持读取本机保存的快捷键，并在接入页点击「填入已读取的快捷键」。这是导入声选的路由设置；原应用仍含 Fn 的动作需要在原应用修改。读取失败或格式变化会显示「待检查」。飞书、其他输入法和系统键盘设置通过逐项引导确认；声选不自动批准系统权限。
+
+主界面和菜单栏提供「Fn 冲突检查」。返回声选时和运行期间每 30 秒重新扫描；新检测到的已知应用会进入清单。手动确认按应用版本和安装位置保存，标记为「已手动确认」，不会冒充自动检测结果。清单不覆盖所有软件，已保存的配置也不能证明原应用已经生效。
 
 可以回退或「稍后设置」，已保存的配置会保留。练习文字只在内存中临时显示，退出助手后清空。
 
@@ -50,6 +57,8 @@
 | --- | --- | --- |
 | Typeless | 左 Control + 左 Option + `1`（`⌃⌥1`） | 设置 → Keyboard shortcuts：翻译可用 `⌃⌘1`；随便问的 `Fn + Space` 改为 `⌥⌘1`，并清理其他 Fn 绑定。每组最多 3 个键 |
 | Chatterfly | Control + Option + Shift（`⌃⌥⇧`） | 指令模式的双击 Fn 改为 `⌥⇧⌘`。快捷键使用最多 3 个修饰键；AI 指令与翻译是不同动作 |
+| 飞书 / Lark（内置语音） | 例如 Control + Option + `9`（`⌃⌥9`） | 设置 → 效率 → 语音输入 → 立即设置：将长按 Fn 改为独立组合，重新打开设置确认已保存；无需把飞书加入语音输入法列表 |
+| 网易叭哥说 | Control + Option + `7`（`⌃⌥7`） | 翻译可用 `⌃⌘7`；随便问的 `Fn + Space` 也需释放，例如改为 `⌥⌘7` |
 | 微信输入法 | 左 Control + 左 Option + `2`（`⌃⌥2`） | 设置「启动语音输入」，释放原 `Fn + Space`；选择点按启动的功能，区别于「按住说话」 |
 
 微信语音输入需要系统当前选中微信输入源。声选在选用微信、启用 Fn 或准备测试时会选择它；手动切到 ABC 后，请重新选用微信或点击「重新准备试用」。
@@ -69,7 +78,7 @@
 
 ### 当前验证范围
 
-实测覆盖记录中的应用版本与构建：Typeless 和 Chatterfly 对应功能构建 `9da51c9`，微信对应随后完成的原生界面构建。当前代码通过 **61/61 项测试**（18 项应用测试、43 项核心测试）。更名后的四步助手、权限状态、滚动与底栏、试用确认按钮及设置页已完成本机界面检查；原有输入法配置保留，Fn 已就绪。三款输入法的真人语音结果沿用对应功能构建的记录，尚未在更名后的发布包逐项重测。完整证据与限制见 [兼容性记录](docs/COMPATIBILITY.md)。
+实测覆盖记录中的应用版本与构建：Typeless 和 Chatterfly 对应功能构建 `9da51c9`，微信对应随后完成的原生界面构建。当前 Fn 冲突检查代码通过 **74/74 项测试**（21 项应用测试、53 项核心测试）。更名后的四步助手、权限状态、滚动与底栏、试用确认按钮及设置页已完成本机界面检查；原有输入法配置保留，Fn 已就绪。三款输入法的真人语音结果沿用对应功能构建的记录，尚未在更名后的发布包逐项重测。完整证据与限制见 [兼容性记录](docs/COMPATIBILITY.md)。
 
 自定义应用需要提供可配置的全局快捷键、支持点按切换录音，并接受系统合成键盘事件。声选不会修改第三方应用的私有快捷键配置。外接键盘的 Fn 若仅在键盘固件内部工作，macOS 无法将它交给声选。
 
@@ -129,7 +138,7 @@ swift build --build-system native
 
 **SpeakSwitch** is a native macOS voice input switcher. Keep **one Fn key** while switching between dictation apps as their experience, pricing, and free allowances change. Apps stay running; SpeakSwitch routes a dedicated shortcut to the selected app.
 
-It includes a four-step setup assistant, a local shared vocabulary with TXT/CSV import and export, JSON backups, and local usage estimates. Dictionary handoff is manual, without background two-way synchronization. Typeless, Chatterfly, and WeType have recorded real-keyboard acceptance; only Typeless translation has been verified. Other bundled providers are untested templates. See the [compatibility record](docs/COMPATIBILITY.md) for versions and build boundaries.
+It includes a five-step setup assistant with Fn conflict preflight, a local shared vocabulary with TXT/CSV import and export, JSON backups, and local usage estimates. Dictionary handoff is manual, without background two-way synchronization. Typeless, Chatterfly, and WeType have recorded real-keyboard acceptance; only Typeless translation has been verified. Other bundled providers are untested templates. See the [compatibility record](docs/COMPATIBILITY.md) for versions and build boundaries.
 
 [Download v0.1.0 for Apple Silicon](https://github.com/lizheyong/SpeakSwitch/releases/download/v0.1.0/SpeakSwitch-arm64.zip). Requires macOS 13+. Intel users can build from source. This release is not Developer ID signed or notarized: run it only if you trust the source and download, and follow macOS Privacy & Security prompts to open it. SpeakSwitch does not record audio or log typing in other apps; practice text is temporary in-memory content.
 

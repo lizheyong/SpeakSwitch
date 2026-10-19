@@ -20,6 +20,9 @@ final class AppStore: ObservableObject {
     @Published var hotkeyEnabled = true
     @Published var showsProviderNameInMenuBar = false
     @Published var showsSetupAssistant = false
+    @Published var showsFnChecks = false
+    @Published private(set) var excludedFromCycle: Set<String> = []
+    @Published private(set) var fnChecks: [FnCheck] = []
     @Published private var installedPaths: [String: URL] = [:]
     @Published private var runningBundleIDs: Set<String> = []
     var onHotkeyChanged: ((Bool) -> Void)?
@@ -31,6 +34,7 @@ final class AppStore: ObservableObject {
     private let configurationURL: URL
     private var setupDepth = 0
     private var wantsEnabled = false
+    private var lastFnCheck = Date.distantPast
 
     struct Configuration: Codable {
         var providers: [Provider]
@@ -38,6 +42,7 @@ final class AppStore: ObservableObject {
         var hotkeyEnabled: Bool
         var isEnabled: Bool?
         var showsProviderNameInMenuBar: Bool?
+        var excludedFromCycle: Set<String>?
     }
 
     var selectedProvider: Provider? { providers.first { $0.id == selectedID } }
@@ -75,7 +80,7 @@ final class AppStore: ObservableObject {
             Task { @MainActor in self?.refresh() }
         }
         // A saved configuration can resume only after the user has completed setup.
-        if wantsEnabled && selectedProvider?.isConfigured == true && hasAccessibility && hasInputMonitoring {
+        if wantsEnabled && selectedProvider?.isConfigured == true && selectedProvider.map(isRunning) == true && hasAccessibility && hasInputMonitoring {
             setEnabled(true)
         }
     }
@@ -105,6 +110,7 @@ final class AppStore: ObservableObject {
             }
         }
         if installedPaths != paths { installedPaths = paths }
+        if Date().timeIntervalSince(lastFnCheck) > 30 { refreshFnChecks() }
         if isEnabled && (!hasAccessibility || !hasInputMonitoring) {
             setEnabled(false)
             message = "需要辅助功能与输入监控权限，才能把 Fn 交给当前输入法。授权后点击开启。"
@@ -115,20 +121,45 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func refreshFnChecks() {
+        lastFnCheck = Date()
+        let paths = Dictionary(uniqueKeysWithValues: providers.compactMap { provider in
+            applicationURL(for: provider).map { (provider.id, $0) }
+        })
+        let checks = FnPreflight.scan(providers: providers, paths: paths)
+        if checks != fnChecks { fnChecks = checks }
+    }
+
+    func markFnCheck(_ check: FnCheck, reviewed: Bool) {
+        UserDefaults.standard.set(reviewed, forKey: check.reviewKey)
+        refreshFnChecks()
+    }
+
+    func openFnCheck(_ check: FnCheck) {
+        if check.id == "system" { openKeyboardSettings() }
+        else if let provider = providers.first(where: { $0.id == check.id }) { openSettings(provider) }
+        else if let url = check.applicationURL { open(url, activates: true) }
+    }
+
+    func detectedShortcuts(for provider: Provider) -> ShortcutSnapshot? {
+        fnChecks.first(where: { $0.id == provider.id })?.snapshot
+    }
+
     @discardableResult
-    func select(_ provider: Provider) -> Bool {
+    func select(_ provider: Provider, launchIfNeeded: Bool = true) -> Bool {
         guard let provider = providers.first(where: { $0.id == provider.id }) else { return false }
         guard provider.isConfigured, isInstalled(provider) else {
             message = "先完成 \(provider.name) 的快捷键接入，再启用 Fn。"
             return false
         }
+        if !launchIfNeeded && !isRunningNow(provider) { return false }
         guard selectRequiredInputSource(for: provider) else { return false }
         cancelShortcutTest()
         if selectedID != provider.id { usage.interrupt() }
         selectedID = provider.id
         router.update(shortcut: provider.shortcut, translation: provider.translationShortcut, delivery: provider.shortcutDelivery)
         let saved = persist()
-        launch(provider)
+        if launchIfNeeded { launch(provider) }
         if isEnabled { isListening = router.isRunning }
         if saved { message = "已选择 \(provider.name) · Fn → \(provider.shortcut.display)" }
         onProviderSelected?(provider)
@@ -136,10 +167,29 @@ final class AppStore: ObservableObject {
     }
 
     func selectNext() {
+        refresh()
         let choices = configuredProviders
-        guard !choices.isEmpty else { message = "先接入一个语音输入法，就可以快捷切换。"; return }
-        let next = choices.firstIndex { $0.id == selectedID }.map { ($0 + 1) % choices.count } ?? 0
-        select(choices[next])
+        let runningIDs = Set(choices.filter(isRunning).map(\.id))
+        guard let next = ProviderCycle.next(in: choices, currentID: selectedID, runningIDs: runningIDs, excludedIDs: excludedFromCycle) else {
+            message = "没有正在运行且参与快捷切换的输入法。请启动一个输入法，或在列表中开启“参与快捷切换”。"
+            return
+        }
+        select(next, launchIfNeeded: false)
+    }
+
+    func participatesInCycle(_ provider: Provider) -> Bool { !excludedFromCycle.contains(provider.id) }
+
+    func setParticipatesInCycle(_ provider: Provider, enabled: Bool) {
+        if enabled { excludedFromCycle.remove(provider.id) }
+        else { excludedFromCycle.insert(provider.id) }
+        persist()
+    }
+
+    private func isRunningNow(_ provider: Provider) -> Bool {
+        let identifiers = provider.bundleIDs + [installedPaths[provider.id].flatMap { Bundle(url: $0)?.bundleIdentifier }].compactMap { $0 }
+        return NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier.map(identifiers.contains) == true && !app.isTerminated
+        }
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -402,6 +452,7 @@ final class AppStore: ObservableObject {
             selectedID = saved.selectedID; hotkeyEnabled = saved.hotkeyEnabled
             wantsEnabled = saved.isEnabled ?? false
             showsProviderNameInMenuBar = saved.showsProviderNameInMenuBar ?? false
+            excludedFromCycle = saved.excludedFromCycle ?? []
         } catch { message = "配置读取失败：\(error.localizedDescription)" }
     }
 
@@ -410,7 +461,7 @@ final class AppStore: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: configurationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(Configuration(providers: providers, selectedID: selectedID, hotkeyEnabled: hotkeyEnabled, isEnabled: wantsEnabled, showsProviderNameInMenuBar: showsProviderNameInMenuBar))
+            let data = try encoder.encode(Configuration(providers: providers, selectedID: selectedID, hotkeyEnabled: hotkeyEnabled, isEnabled: wantsEnabled, showsProviderNameInMenuBar: showsProviderNameInMenuBar, excludedFromCycle: excludedFromCycle))
             try data.write(to: configurationURL, options: .atomic)
             return true
         } catch { message = "配置保存失败：\(error.localizedDescription)"; return false }

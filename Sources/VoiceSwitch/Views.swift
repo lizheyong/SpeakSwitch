@@ -34,6 +34,7 @@ struct MainContentView: View {
     @AppStorage("setupAssistantCompleted") private var assistantCompleted = false
     @AppStorage("setupAssistantInProgress") private var assistantInProgress = false
     @AppStorage("setupAssistantDeferred") private var assistantDeferred = false
+    @AppStorage("setupAssistantRevision") private var assistantRevision = 0
 
     var body: some View {
         NavigationSplitView {
@@ -68,6 +69,7 @@ struct MainContentView: View {
         .sheet(item: $editingProvider) { provider in
             ProviderSetupView(store: store, provider: provider)
         }
+        .sheet(isPresented: $store.showsFnChecks) { FnPreflightView(store: store) }
         .sheet(isPresented: $store.showsSetupAssistant) {
             OnboardingView(store: store, step: $assistantStep, providerID: $assistantProviderID,
                            trialConfirmed: $assistantTrialConfirmed) {
@@ -75,6 +77,16 @@ struct MainContentView: View {
                 store.showsSetupAssistant = false
             }
             .onAppear { assistantInProgress = true }
+        }
+        .onAppear {
+            if assistantRevision < 1 {
+                // Resume an unfinished assistant before the new conflict-check step.
+                if assistantStep >= 2 { assistantStep = 2; assistantTrialConfirmed = false }
+                assistantRevision = 1
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            store.refreshFnChecks()
         }
         .onChange(of: store.showsSetupAssistant) { shown in
             if shown {
@@ -92,6 +104,7 @@ struct MainContentView: View {
     }
 
     private var fnStatus: String {
+        if let selected = store.selectedProvider, !store.isRunning(selected) { return "当前输入法未启动" }
         if store.isListening { return "Fn 已就绪" }
         return store.isEnabled ? "等待完成接入" : "Fn 已暂停"
     }
@@ -104,6 +117,16 @@ struct MainContentView: View {
 
     private var providersPage: some View {
         Form {
+            if store.fnChecks.contains(where: \.needsReview) {
+                Section("Fn 冲突检查") {
+                    Text(store.fnChecks.contains(where: \.hasConflict)
+                         ? "发现其他快捷键仍包含 Fn，可能影响统一触发。"
+                         : "有应用的 Fn 占用待检查，接入前请先确认。")
+                    Text(store.fnChecks.filter(\.needsReview).map(\.name).joined(separator: "、"))
+                        .foregroundStyle(.secondary)
+                    Button("查看并处理…") { store.showsFnChecks = true }
+                }
+            }
             if store.configuredProviders.isEmpty {
                 Section {
                     Text("连接你常用的语音输入法").font(.headline)
@@ -160,9 +183,11 @@ struct MainContentView: View {
                     Button("添加应用…", action: store.addApplication)
                     Button("重新检测", action: store.refresh)
                     Spacer()
+                    Button("切换下一个", action: store.selectNext)
+                        .help("与 ⌃⌥⌘Space 相同，只切换正在运行且参与快捷切换的输入法")
                 }
             } footer: {
-                Text("结束当前录音后再切换。输入法保持常驻，声音和文本由原应用处理。")
+                Text("快捷切换只经过正在运行且勾选“参与快捷切换”的输入法；已退出的应用会跳过。关闭窗口可能仍在后台运行，以列表状态为准。")
             }
 
             if let message = store.message, !message.isEmpty {
@@ -183,6 +208,7 @@ struct MainContentView: View {
                     .foregroundStyle(.secondary)
                 Button("打开接入助手…") { store.showsSetupAssistant = true }
             }
+            FnPreflightSections(store: store)
             Section("1. 释放 Fn") {
                 Text("在每个语音应用中，移除语音输入、翻译、指令等功能对 Fn 的占用。系统键盘设置中，将“按下 🌐 键时”设为“不执行任何操作”，并把系统听写的快捷键改为不含 Fn 的组合。")
                 Button("打开键盘设置", action: store.openKeyboardSettings)
@@ -301,6 +327,10 @@ private struct ProviderRow: View {
                     ProviderIcon(provider: provider, size: 28)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(provider.name).fontWeight(.medium)
+                        if installed {
+                            Text(store.isRunning(provider) ? "运行中" : "未启动")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         if !provider.note.isEmpty {
                             Text(provider.note)
                                 .font(.caption).foregroundStyle(.secondary).lineLimit(2)
@@ -313,10 +343,16 @@ private struct ProviderRow: View {
             .buttonStyle(.plain)
 
             if installed && provider.isConfigured {
-                if selected {
+                Toggle("参与快捷切换", isOn: Binding(
+                    get: { store.participatesInCycle(provider) },
+                    set: { store.setParticipatesInCycle(provider, enabled: $0) }
+                ))
+                .toggleStyle(.checkbox)
+                .accessibilityLabel("\(provider.name) 参与快捷切换")
+                if selected && store.isRunning(provider) {
                     Label("当前", systemImage: "checkmark").foregroundStyle(.secondary)
                 } else {
-                    Button("使用") { store.select(provider) }
+                    Button(store.isRunning(provider) ? "使用" : "启动并使用") { store.select(provider) }
                 }
             } else if installed {
                 Button("接入…", action: onConfigure)
@@ -359,6 +395,24 @@ struct ProviderSetupView: View {
             Divider()
 
             Form {
+                if let snapshot = store.detectedShortcuts(for: draft), let shortcut = snapshot.dictation {
+                    Section("自动读取快捷键") {
+                        Text("已读取原应用保存的组合键，可以直接填入声选，省去重复录制。")
+                        LabeledContent("语音输入", value: shortcut.display)
+                        if let translation = snapshot.translation {
+                            LabeledContent("翻译", value: translation.display)
+                        }
+                        Button("填入已读取的快捷键") {
+                            draft.shortcut = shortcut
+                            draft.translationShortcut = snapshot.translation
+                            confirmed = false
+                        }
+                        if !snapshot.fnBindings.isEmpty {
+                            Text("原应用仍有 Fn 绑定，请按下一步的说明先释放它。")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
                 Section("1. 释放 Fn") {
                     Text(settingsLocation).fontWeight(.medium)
                     Text(releaseFnGuidance)
@@ -473,7 +527,7 @@ struct ProviderSetupView: View {
                 draft.bundleIDs = provider.bundleIDs
             }
         }
-        .onAppear { store.beginSetup() }
+        .onAppear { store.beginSetup(); store.refreshFnChecks() }
         .onDisappear { store.endSetup() }
     }
 

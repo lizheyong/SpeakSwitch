@@ -75,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        store.refresh()
         menu.removeAllItems()
         let status = NSMenuItem(title: store.isListening ? "语音输入已就绪 · Fn" : store.isEnabled ? "正在设置语音输入" : "语音快捷键已暂停", action: nil, keyEquivalent: "")
         status.isEnabled = false
@@ -87,7 +88,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             menu.addItem(empty)
         } else {
             for provider in store.configuredProviders {
-                let item = NSMenuItem(title: provider.name, action: #selector(selectProvider(_:)), keyEquivalent: "")
+                let running = store.isRunning(provider)
+                let suffix = running ? (store.participatesInCycle(provider) ? " · 运行中" : " · 不参与快捷切换") : " · 启动并使用"
+                let item = NSMenuItem(title: provider.name + suffix, action: #selector(selectProvider(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = provider.id
                 item.image = menuIcon(for: provider)
@@ -109,6 +112,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let assistant = NSMenuItem(title: "接入助手…", action: #selector(openSetupAssistant(_:)), keyEquivalent: "")
         assistant.target = self
         menu.addItem(assistant)
+        let pending = store.fnChecks.filter(\.needsReview).count
+        let conflicts = NSMenuItem(title: pending > 0 ? "Fn 冲突检查（\(pending) 项待处理）…" : "Fn 冲突检查…", action: #selector(openFnChecks(_:)), keyEquivalent: "")
+        conflicts.target = self
+        menu.addItem(conflicts)
         let quit = NSMenuItem(title: "退出 声选", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
@@ -130,6 +137,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func openSetupAssistant(_ sender: NSMenuItem) {
         store.showsSetupAssistant = true
+        showWindow()
+    }
+
+    @objc private func openFnChecks(_ sender: NSMenuItem) {
+        store.refreshFnChecks()
+        store.showsFnChecks = true
         showWindow()
     }
 

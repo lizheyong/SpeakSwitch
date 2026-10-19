@@ -75,6 +75,8 @@ public struct Provider: Identifiable, Codable, Equatable, Sendable {
             return Shortcut(keyCode: UInt16.max, key: "", option: false, shift: true)
         case "wetype":
             return Shortcut(keyCode: 19, key: "2", option: false)
+        case "bageshuo":
+            return Shortcut(keyCode: 26, key: "7", option: false)
         default:
             return Shortcut(keyCode: shortcut.keyCode, key: shortcut.key, option: false, shift: true)
         }
@@ -94,6 +96,7 @@ public struct Provider: Identifiable, Codable, Equatable, Sendable {
         .init(id: "doubao", name: "豆包输入法", subtitle: "轻声说，也能听得清", symbol: "bubble.left.and.text.bubble.right", tint: "477BD1", website: "https://shurufa.doubao.com/pc", bundleIDs: [], appNames: ["DoubaoIme", "豆包输入法"], shortcut: .init(keyCode: 20, key: "3")),
         .init(id: "wetype", name: "微信输入法", subtitle: "让表达更自然", symbol: "textformat.abc", tint: "429B6D", website: "https://z.weixin.qq.com/", bundleIDs: [], appNames: ["WeType", "微信输入法"], shortcut: wetypeShortcut),
         .init(id: "spokenly", name: "Spokenly", subtitle: "云端模型与本地听写", symbol: "mic", tint: "AD64C1", website: "https://spokenly.app/", bundleIDs: ["app.spokenly"], appNames: ["Spokenly"], shortcut: .init(keyCode: 23, key: "5")),
-        .init(id: "shandian", name: "闪电说", subtitle: "随口说，帮你整理好", symbol: "bolt", tint: "B48C36", website: "https://shandianshuo.cn/", bundleIDs: [], appNames: ["闪电说", "Shandianshuo", "ShanDianShuo"], shortcut: .init(keyCode: 22, key: "6"))
+        .init(id: "shandian", name: "闪电说", subtitle: "随口说，帮你整理好", symbol: "bolt", tint: "B48C36", website: "https://shandianshuo.cn/", bundleIDs: [], appNames: ["闪电说", "Shandianshuo", "ShanDianShuo"], shortcut: .init(keyCode: 22, key: "6")),
+        .init(id: "bageshuo", name: "网易叭哥说", subtitle: "语音润色与翻译", symbol: "waveform", tint: "D64A42", website: "", bundleIDs: ["com.bageshuo"], appNames: ["网易叭哥说"], shortcut: .init(keyCode: 26, key: "7", command: false))
     ]
 }
